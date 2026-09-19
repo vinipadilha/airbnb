@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Studio — controle financeiro
 
-## Getting Started
+App pessoal de controle de entradas e saídas do studio de temporada.
 
-First, run the development server:
+## Rodar local
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. `npm install`
+2. Copie `.env.local.example` para `.env.local` e preencha.
+3. `npm run dev`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Variáveis de ambiente
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Nome | O que é |
+|---|---|
+| `SUPABASE_URL` | URL do projeto no Supabase |
+| `SUPABASE_SERVICE_KEY` | service_role key — **nunca** exponha no cliente |
+| `APP_PIN` | PIN de acesso, 6 dígitos ou mais |
+| `APP_SESSION_SECRET` | segredo do cookie (`openssl rand -base64 32`) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Banco
 
-## Learn More
+O schema está em `supabase/schema.sql`. Cole no SQL Editor do Supabase. É
+idempotente: pode rodar de novo sem duplicar o seed.
 
-To learn more about Next.js, take a look at the following resources:
+## Testes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`npm test` — cobre dinheiro, competência, totais, mapeamento, pendências, CSV e
+o token de sessão. A interface não tem teste automatizado, por decisão
+registrada na spec.
