@@ -2,13 +2,14 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
+import { CardPendencias } from '@/components/CardPendencias'
 import { CartoesTotais } from '@/components/CartoesTotais'
 import { Extrato } from '@/components/Extrato'
 import { ModalLancamento } from '@/components/ModalLancamento'
 import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
 import { competenciaAtual } from '@/lib/competencia'
-import type { Categoria, Lancamento } from '@/lib/tipos'
+import type { Categoria, GastoFixo, Lancamento } from '@/lib/tipos'
 import type { TotalCategoria, TotaisMes } from '@/lib/totais'
 
 type DadosMes = {
@@ -29,6 +30,8 @@ export default function Dashboard() {
   const [editando, setEditando] = useState<Lancamento | null>(null)
   // Incrementa a cada abertura. Ver a explicação na key do ModalLancamento.
   const [aberturas, setAberturas] = useState(0)
+  const [pendentes, setPendentes] = useState<GastoFixo[]>([])
+  const [falhasPendencias, setFalhasPendencias] = useState<string[]>([])
 
   const carregar = useCallback(async () => {
     setErro(null)
@@ -42,9 +45,24 @@ export default function Dashboard() {
     }
   }, [competencia])
 
+  const carregarPendencias = useCallback(async () => {
+    try {
+      const resposta = await fetch('/api/pendencias')
+      if (!resposta.ok) return
+      const corpo = (await resposta.json()) as { pendentes: GastoFixo[] }
+      setPendentes(corpo.pendentes)
+    } catch {
+      // Silencioso de propósito: a fila é um extra, não pode derrubar o dashboard.
+    }
+  }, [])
+
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  useEffect(() => {
+    void carregarPendencias()
+  }, [carregarPendencias])
 
   function mudarMes(nova: string, dir: 1 | -1) {
     setDirecao(dir)
@@ -66,6 +84,28 @@ export default function Dashboard() {
   return (
     <>
       <Navegacao />
+
+      {competencia === competenciaAtual() && (
+        <>
+          <CardPendencias
+            key={pendentes.map((p) => p.id).join(',')}
+            pendentes={pendentes}
+            competencia={competencia}
+            onLancado={(falhas) => {
+              setFalhasPendencias(falhas)
+              void carregar()
+              void carregarPendencias()
+            }}
+          />
+          {falhasPendencias.length > 0 && (
+            <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
+              {falhasPendencias.map((f) => (
+                <p key={f}>{f}</p>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       <SeletorMes competencia={competencia} onMudar={mudarMes} />
 
