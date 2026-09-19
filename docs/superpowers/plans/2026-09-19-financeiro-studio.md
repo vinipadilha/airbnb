@@ -57,7 +57,7 @@ com `feat:`, `test:`, `fix:` ou `chore:`.
 | `lib/csv.ts` | `parseCsvEntradas`, `marcarDuplicados`. |
 | `lib/sessao.ts` | `assinarToken`, `verificarToken`. A única peça de segurança; mora em `lib/` para ser testável. |
 | `lib/supabase.ts` | Cliente Supabase com service key. **Só importado por route handlers.** |
-| `middleware.ts` | Bloqueia toda rota sem cookie de sessão válido. |
+| `proxy.ts` | Bloqueia toda rota sem cookie de sessão válido (era `middleware.ts` até o Next 15). |
 | `app/api/**/route.ts` | Route handlers: lançamentos, categorias, gastos fixos, pendências, import, sessão. |
 | `app/page.tsx` | Dashboard. |
 | `app/fixos/page.tsx` | Gastos fixos. |
@@ -1814,14 +1814,20 @@ git commit -m "feat: autentica por PIN com limite de tentativas"
 
 - [ ] **Step 1: Escrever o middleware**
 
-`middleware.ts` (na raiz do projeto, não em `app/`):
+`proxy.ts` (na raiz do projeto, não em `app/`).
+
+> **Next 16 renomeou isto.** A convenção `middleware.ts` / `export function
+> middleware` foi deprecada em favor de `proxy.ts` / `export function proxy` —
+> mesmo comportamento, mesmo matcher. Se o seu Next ainda for 15, use
+> `middleware.ts` e `export async function middleware`. O codemod oficial
+> converte: `npx @next/codemod@canary middleware-to-proxy .`
 
 ```ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { COOKIE_SESSAO, verificarToken } from '@/lib/sessao'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const segredo = process.env.APP_SESSION_SECRET
   if (!segredo) {
     return new NextResponse('Servidor mal configurado.', { status: 500 })
@@ -1939,7 +1945,7 @@ Se o passo 1 não redirecionar, confira o `matcher` do middleware.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add middleware.ts app/entrar/page.tsx
+git add proxy.ts app/entrar/page.tsx
 git commit -m "feat: protege as rotas com PIN e cookie de sessão"
 ```
 
@@ -4518,7 +4524,7 @@ grep -rn "SUPABASE_SERVICE_KEY\|APP_PIN\|APP_SESSION_SECRET" app components lib
 ```
 
 Expected: as ocorrências aparecem **apenas** em `lib/supabase.ts`,
-`lib/limite-tentativas.ts`, `middleware.ts` e arquivos em `app/api/`. Se algum
+`lib/limite-tentativas.ts`, `proxy.ts` e arquivos em `app/api/`. Se algum
 nome aparecer num arquivo com `'use client'`, pare e corrija: essa variável iria
 para o bundle do navegador.
 
