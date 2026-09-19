@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { bloqueado, registrarFalha } from '@/lib/limite-tentativas'
+import { bloqueado, ipDoPedido, registrarFalha } from '@/lib/limite-tentativas'
 import { COOKIE_SESSAO, DURACAO_SESSAO_MS, assinarToken, comparaSegura } from '@/lib/sessao'
 
 export async function POST(request: Request) {
@@ -9,8 +9,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: 'Servidor mal configurado.' }, { status: 500 })
   }
 
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'desconhecido'
+  const ip = ipDoPedido(request)
 
   if (await bloqueado(ip)) {
     return NextResponse.json(
