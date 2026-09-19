@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { CardPendencias } from '@/components/CardPendencias'
 import { CartoesTotais } from '@/components/CartoesTotais'
 import { Extrato } from '@/components/Extrato'
+import { GraficoCategorias } from '@/components/GraficoCategorias'
 import { ModalLancamento } from '@/components/ModalLancamento'
 import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
@@ -132,6 +133,10 @@ export default function Dashboard() {
               <CartoesTotais
                 totais={dados.totais}
                 saldoTotalCentavos={dados.saldoTotalCentavos}
+              />
+              <GraficoCategorias
+                porCategoria={dados.porCategoria}
+                categorias={dados.categorias}
               />
               <Extrato
                 lancamentos={dados.lancamentos}
