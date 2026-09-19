@@ -1,69 +1,128 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { AnimatePresence, motion } from 'framer-motion'
+import { useCallback, useEffect, useState } from 'react'
+import { CartoesTotais } from '@/components/CartoesTotais'
+import { Extrato } from '@/components/Extrato'
+import { ModalLancamento } from '@/components/ModalLancamento'
+import { Navegacao } from '@/components/Navegacao'
+import { SeletorMes } from '@/components/SeletorMes'
+import { competenciaAtual } from '@/lib/competencia'
+import type { Categoria, Lancamento } from '@/lib/tipos'
+import type { TotalCategoria, TotaisMes } from '@/lib/totais'
+
+type DadosMes = {
+  competencia: string
+  lancamentos: Lancamento[]
+  totais: TotaisMes
+  saldoTotalCentavos: number
+  porCategoria: TotalCategoria[]
+  categorias: Categoria[]
+}
+
+export default function Dashboard() {
+  const [competencia, setCompetencia] = useState(competenciaAtual())
+  const [direcao, setDirecao] = useState<1 | -1>(1)
+  const [dados, setDados] = useState<DadosMes | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+  const [modalAberto, setModalAberto] = useState(false)
+  const [editando, setEditando] = useState<Lancamento | null>(null)
+  // Incrementa a cada abertura. Ver a explicação na key do ModalLancamento.
+  const [aberturas, setAberturas] = useState(0)
+
+  const carregar = useCallback(async () => {
+    setErro(null)
+    try {
+      const resposta = await fetch(`/api/mes?competencia=${competencia}`)
+      if (!resposta.ok) throw new Error('resposta não ok')
+      setDados((await resposta.json()) as DadosMes)
+    } catch {
+      // Spec §10: nunca tela branca. O que já estava carregado continua na tela.
+      setErro('Não foi possível carregar. Verifique a conexão.')
+    }
+  }, [competencia])
+
+  useEffect(() => {
+    void carregar()
+  }, [carregar])
+
+  function mudarMes(nova: string, dir: 1 | -1) {
+    setDirecao(dir)
+    setCompetencia(nova)
+  }
+
+  function abrirNovo() {
+    setEditando(null)
+    setAberturas((n) => n + 1)
+    setModalAberto(true)
+  }
+
+  function abrirEdicao(lancamento: Lancamento) {
+    setEditando(lancamento)
+    setAberturas((n) => n + 1)
+    setModalAberto(true)
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <Navegacao />
+
+      <SeletorMes competencia={competencia} onMudar={mudarMes} />
+
+      {erro && (
+        <div className="flex items-center justify-between rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
+          <span>{erro}</span>
+          <button onClick={() => void carregar()} className="underline">
+            Tentar de novo
+          </button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+      )}
+
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={competencia}
+          initial={{ opacity: 0, x: direcao * 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: direcao * -24 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="flex flex-col gap-6"
+        >
+          {dados && (
+            <>
+              <CartoesTotais
+                totais={dados.totais}
+                saldoTotalCentavos={dados.saldoTotalCentavos}
+              />
+              <Extrato
+                lancamentos={dados.lancamentos}
+                categorias={dados.categorias}
+                onEditar={abrirEdicao}
+              />
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <button
+        onClick={abrirNovo}
+        aria-label="Novo lançamento"
+        className="fixed bottom-20 right-6 z-40 h-14 w-14 rounded-full bg-slate-900 text-2xl text-white shadow-lg transition-transform active:scale-95 sm:bottom-8"
+      >
+        +
+      </button>
+
+      <ModalLancamento
+        // A key remonta o modal a cada ABERTURA, não só a cada alvo diferente.
+        // Só o id não bastaria: duas criações seguidas compartilhariam a key
+        // 'novo', o componente não desmontaria, e a segunda abriria com o que
+        // foi digitado na primeira (ver Task 16).
+        key={`${editando?.id ?? 'novo'}-${aberturas}`}
+        aberto={modalAberto}
+        categorias={dados?.categorias ?? []}
+        lancamento={editando}
+        onFechar={() => setModalAberto(false)}
+        onSalvo={() => void carregar()}
+      />
+    </>
+  )
 }
