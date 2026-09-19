@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { COOKIE_SESSAO, verificarToken } from '@/lib/sessao'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const segredo = process.env.APP_SESSION_SECRET
   if (!segredo) {
     return new NextResponse('Servidor mal configurado.', { status: 500 })
