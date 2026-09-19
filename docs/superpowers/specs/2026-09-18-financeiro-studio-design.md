@@ -43,8 +43,11 @@ O desenho corrige isso sem introduzir cadastro de usuários:
   data de expiração, com segredo do servidor, em cookie `httpOnly` + `secure` +
   `SameSite=Lax`, válido por 180 dias. Uma flag do tipo `auth=1` seria inútil:
   qualquer visitante a definiria no próprio navegador e o middleware passaria.
-- **Limite de tentativas:** 5 falhas por IP a cada 15 minutos, contadas numa
-  tabela do próprio Supabase (IP + janela). Precisa ser armazenamento
+- **Limite de tentativas:** 5 falhas por IP a cada 15 minutos, **mais um teto
+  global de 20 falhas por janela**, contados numa tabela do próprio Supabase.
+  O teto global é o que importa de verdade: o IP vem de cabeçalho HTTP, e quem
+  ataca pode variá-lo a cada tentativa para ganhar um balde novo. Contra o
+  contador global não há cabeçalho que ajude. Precisa ser armazenamento
   compartilhado: na Vercel, um contador em memória vive por instância e morre a
   cada cold start, ou seja, não limita nada. Sem isso, um PIN numérico num
   endpoint público cai em minutos de tentativa automatizada.
@@ -272,7 +275,7 @@ entrada e saída, para carregarem significado em vez de decorarem.
 | Remover gasto fixo já lançado | Arquivado; lançamentos históricos preservados. |
 | Import com duplicados | Detectados por data + valor, tanto contra o banco quanto dentro do próprio arquivo; desmarcados por padrão. |
 | Valor zero ou negativo | Rejeitado no formulário e no banco (`CHECK`). |
-| PIN tentado repetidamente | 5 falhas por IP a cada 15 min bloqueiam novas tentativas. |
+| PIN tentado repetidamente | 5 falhas por IP e 20 no total a cada 15 min bloqueiam novas tentativas. |
 | Editar mês de lançamento gerado pela fila | Bloqueado; a data fica restrita ao mês da competência. |
 | App não aberto durante um mês | As pendências daquele mês não reaparecem; lançamento manual, se quiser. |
 | Dois dispositivos lançando o mesmo fixo | Bloqueado pela chave única em `gastos_fixos_lancados`. |
