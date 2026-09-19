@@ -6,7 +6,14 @@
 
 **Architecture:** Next.js App Router com toda a lógica de dinheiro isolada em módulos puros de `lib/` (sem React, sem rede, testáveis com `node:test`). O navegador nunca fala com o Supabase: ele chama route handlers do próprio app, que usam a *service role key* no servidor. Uma tranca por PIN com cookie assinado protege todas as rotas.
 
-**Tech Stack:** Next.js 15 (App Router), React 19, TypeScript strict, Tailwind CSS, Supabase (Postgres), Framer Motion, Recharts, `node:test` + `tsx`.
+**Tech Stack:** Next.js (App Router), React 19, TypeScript strict, Tailwind CSS v4, Supabase (Postgres), Framer Motion, Recharts 3, `node:test` + `tsx`.
+
+> **Sobre versões:** o plano usa `@latest` e foi escrito contra Next 16 /
+> Recharts 3 / Tailwind v4 — o que o `create-next-app` instala hoje. Onde uma
+> API mudou entre versões (o formatter do Recharts, a fonte do scaffold, a
+> config do Tailwind) o plano avisa no ponto. Anote no Step 2 da Task 1 as
+> versões que caírem no seu `package.json`: se divergirem muito das citadas,
+> confira esses pontos antes de seguir.
 
 **Spec:** `docs/superpowers/specs/2026-09-18-financeiro-studio-design.md` — leia antes de começar. Em qualquer divergência, a spec vence este plano.
 
@@ -92,6 +99,12 @@ o create-next-app aceita diretório não vazio.
 ```bash
 npm install @supabase/supabase-js framer-motion recharts
 npm install -D tsx
+```
+
+Anote as versões que caíram:
+
+```bash
+node -p "Object.entries(require('./package.json').dependencies).map(([k,v])=>k+' '+v).join('\n')"
 ```
 
 - [ ] **Step 3: Adicionar os scripts de teste e typecheck**
@@ -1091,9 +1104,12 @@ export function parseCsvEntradas(texto: string): LinhaImport[] {
  * as linhas anteriores do próprio arquivo. A primeira ocorrência dentro do
  * arquivo não é marcada; as repetições são.
  */
+/** Só precisa destes três campos — assim o chamador pode buscar menos do banco. */
+export type LancamentoExistente = Pick<Lancamento, 'tipo' | 'data' | 'valorCentavos'>
+
 export function marcarDuplicados(
   linhas: LinhaImport[],
-  existentes: Lancamento[],
+  existentes: LancamentoExistente[],
 ): LinhaImportMarcada[] {
   const vistos = new Set(
     existentes
@@ -1245,7 +1261,25 @@ from (values
   ('Internet',   9800),
   ('PriceLabs', 11000)
 ) as v(nome, valor)
-where not exists (select 1 from gastos_fixos);
+where not exists (select 1 from gastos_fixos)
+  -- Sem este exists, num banco onde categorias já tem linhas mas não tem
+  -- "Contas fixas", o subselect acima vira NULL e o insert estoura no not null.
+  and exists (select 1 from categorias where nome = 'Contas fixas');
+
+-- Incremento atômico do contador de tentativas de PIN.
+-- Ler e depois gravar em duas etapas permitiria que duas requisições
+-- simultâneas lessem 2 e gravassem 3 — e um atacante disparando em paralelo
+-- ficaria indefinidamente abaixo do limite.
+create or replace function registrar_falha_pin(p_ip text, p_janela text)
+returns integer
+language sql
+as $$
+  insert into tentativas_pin (ip, janela, tentativas)
+  values (p_ip, p_janela, 1)
+  on conflict (ip, janela)
+  do update set tentativas = tentativas_pin.tentativas + 1
+  returning tentativas;
+$$;
 ```
 
 - [ ] **Step 3: Rodar no Supabase**
@@ -1677,34 +1711,29 @@ export function janelaDe(agora: number = Date.now()): string {
 }
 
 export async function bloqueado(ip: string): Promise<boolean> {
-  const supabase = clienteServidor()
-  const { data } = await supabase
+  const { data, error } = await clienteServidor()
     .from('tentativas_pin')
     .select('tentativas')
     .eq('ip', ip)
     .eq('janela', janelaDe())
     .maybeSingle()
 
+  // Falha fechada: se não dá para saber quantas tentativas houve, bloqueia.
+  // Falhar aberto faria o limite sumir silenciosamente justamente quando o
+  // banco está instável — e sem banco o app não serve para nada mesmo.
+  if (error) return true
+
   return (data?.tentativas ?? 0) >= MAX_TENTATIVAS
 }
 
 export async function registrarFalha(ip: string): Promise<void> {
-  const supabase = clienteServidor()
-  const janela = janelaDe()
-
-  const { data } = await supabase
-    .from('tentativas_pin')
-    .select('tentativas')
-    .eq('ip', ip)
-    .eq('janela', janela)
-    .maybeSingle()
-
-  await supabase
-    .from('tentativas_pin')
-    .upsert(
-      { ip, janela, tentativas: (data?.tentativas ?? 0) + 1 },
-      { onConflict: 'ip,janela' },
-    )
+  // Incremento atômico no banco (função registrar_falha_pin, criada na Task 8).
+  // Ler e depois gravar daqui abriria uma corrida: duas requisições simultâneas
+  // leriam o mesmo valor e gravariam o mesmo +1, deixando o limite inócuo.
+  await clienteServidor().rpc('registrar_falha_pin', {
+    p_ip: ip,
+    p_janela: janelaDe(),
+  })
 }
 ```
 
@@ -1734,7 +1763,12 @@ export async function POST(request: Request) {
     )
   }
 
-  const { pin } = (await request.json()) as { pin?: string }
+  let pin: unknown
+  try {
+    pin = ((await request.json()) as { pin?: unknown }).pin
+  } catch {
+    return NextResponse.json({ erro: 'Requisição inválida.' }, { status: 400 })
+  }
 
   if (typeof pin !== 'string' || !comparaSegura(pin, pinEsperado)) {
     await registrarFalha(ip)
@@ -1746,6 +1780,9 @@ export async function POST(request: Request) {
   const resposta = NextResponse.json({ ok: true })
   resposta.cookies.set(COOKIE_SESSAO, await assinarToken(expiraEm, segredo), {
     httpOnly: true,
+    // Em produção sempre secure. Em dev fica false porque o localhost do
+    // Step 3 da Task 13 é http, e um cookie secure simplesmente não seria
+    // gravado ali — você não conseguiria testar a tranca.
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
@@ -1795,13 +1832,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Chamada de API recebe 401, não redirect. Um redirect seria seguido pelo
+  // fetch, que receberia o HTML da tela de login com status 200 — e o
+  // dashboard mostraria "não foi possível carregar" em vez de mandar o usuário
+  // para o login.
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.json({ erro: 'Sessão expirada.' }, { status: 401 })
+  }
+
   return NextResponse.redirect(new URL('/entrar', request.url))
 }
 
-// Protege tudo, menos a própria tela de entrada, o endpoint que valida o PIN e
-// os arquivos estáticos do Next.
+// Protege tudo, menos a própria tela de entrada, o endpoint que valida o PIN,
+// os arquivos estáticos e os ícones.
 export const config = {
-  matcher: ['/((?!entrar|api/sessao|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/((?!entrar|api/sessao|_next/static|_next/image|_next/webpack-hmr|favicon.ico|manifest.json|icon|apple-icon).*)',
+  ],
 }
 ```
 
@@ -1918,11 +1965,10 @@ ordem de grandeza, aí sim vale mover as somas para o banco.
 
 ```ts
 import { NextResponse } from 'next/server'
-import { competenciaAtual } from '@/lib/competencia'
+import { competenciaAtual, competenciaDe } from '@/lib/competencia'
 import { paraLancamento, type LinhaLancamento } from '@/lib/mapeamento'
 import { clienteServidor } from '@/lib/supabase'
 import { saidasPorCategoria, saldoAcumulado, totaisDoMes } from '@/lib/totais'
-import { competenciaDe } from '@/lib/competencia'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -1982,6 +2028,7 @@ git commit -m "feat: expõe endpoint com os dados do mês"
 ### Task 15: CRUD de lançamentos
 
 **Files:**
+- Create: `app/api/lancamentos/validacao.ts`
 - Create: `app/api/lancamentos/route.ts`
 - Create: `app/api/lancamentos/[id]/route.ts`
 
@@ -2014,6 +2061,15 @@ export function validarCorpo(corpo: unknown):
     return { ok: false, erro: 'Entrada precisa de origem.' }
   }
 
+  for (const campo of ['noites', 'hospedes'] as const) {
+    const v = c[campo]
+    // Barra aqui em vez de deixar o CHECK do banco barrar: senão o usuário vê
+    // a mensagem crua do Postgres.
+    if (v !== undefined && v !== null && (!Number.isInteger(v) || (v as number) <= 0)) {
+      return { ok: false, erro: `Campo ${campo} precisa ser um número maior que zero.` }
+    }
+  }
+
   return {
     ok: true,
     valor: {
@@ -2041,7 +2097,14 @@ import { clienteServidor } from '@/lib/supabase'
 import { validarCorpo } from './validacao'
 
 export async function POST(request: Request) {
-  const validacao = validarCorpo(await request.json())
+  let corpo: unknown
+  try {
+    corpo = await request.json()
+  } catch {
+    return NextResponse.json({ erro: 'Requisição inválida.' }, { status: 400 })
+  }
+
+  const validacao = validarCorpo(corpo)
   if (!validacao.ok) {
     return NextResponse.json({ erro: validacao.erro }, { status: 400 })
   }
@@ -2072,7 +2135,15 @@ type Contexto = { params: Promise<{ id: string }> }
 
 export async function PATCH(request: Request, { params }: Contexto) {
   const { id } = await params
-  const validacao = validarCorpo(await request.json())
+
+  let corpo: unknown
+  try {
+    corpo = await request.json()
+  } catch {
+    return NextResponse.json({ erro: 'Requisição inválida.' }, { status: 400 })
+  }
+
+  const validacao = validarCorpo(corpo)
   if (!validacao.ok) {
     return NextResponse.json({ erro: validacao.erro }, { status: 400 })
   }
@@ -2416,10 +2487,12 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
 ```
 
 > **Atenção ao remontar o modal.** O estado inicial vem de `lancamento` via
-> `useState`, que só lê o valor na primeira renderização. Quem usa o modal
-> **precisa** passar uma `key` que mude junto com o lançamento editado —
-> `key={lancamento?.id ?? 'novo'}` — senão abrir "editar" depois de "criar"
-> mostra os campos antigos. Isso está previsto na Task 18.
+> `useState`, que só lê o valor na primeira renderização — o mesmo vale para o
+> texto dentro de `CampoValor`. Quem usa o modal **precisa** passar uma `key`
+> que mude a cada abertura, e não apenas a cada alvo diferente:
+> `key={lancamento?.id ?? 'novo'}` sozinho não basta, porque duas criações
+> seguidas compartilham a key `'novo'` e a segunda abriria com o que foi
+> digitado na primeira. A Task 20 resolve isso somando um contador de aberturas.
 
 - [ ] **Step 3: Verificar**
 
@@ -2464,8 +2537,10 @@ type Props = {
 }
 
 export function ValorAnimado({ centavos, className }: Props) {
-  const [exibido, setExibido] = useState(centavos)
-  const anterior = useRef(centavos)
+  // Começa em zero para que o primeiro carregamento também conte (spec §8),
+  // e não apenas as trocas de mês.
+  const [exibido, setExibido] = useState(0)
+  const anterior = useRef(0)
   const reduzirMovimento = useReducedMotion()
 
   useEffect(() => {
@@ -2720,7 +2795,9 @@ git commit -m "feat: exibe extrato do mês agrupado por dia"
 
 - [ ] **Step 1: Definir o fundo e a fonte**
 
-Em `app/globals.css`, depois das diretivas do Tailwind:
+Em `app/globals.css`: **apague a regra `body` e o bloco
+`@media (prefers-color-scheme: dark)` que o scaffold gerou** e ponha, no fim do
+arquivo:
 
 ```css
 body {
@@ -2775,11 +2852,11 @@ export function Navegacao() {
 
 - [ ] **Step 3: Ajustar o layout**
 
-`app/layout.tsx` — mantenha o que o create-next-app gerou e troque o conteúdo do
-`<body>` por:
+`app/layout.tsx` — mantenha os imports de fonte **que o scaffold gerou** (no Next
+16 são `Geist` e `Geist_Mono`, não `Inter`) e troque só o conteúdo do `<body>`:
 
 ```tsx
-<body className={inter.className}>
+<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
   <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 p-4 pb-24 sm:max-w-2xl sm:gap-6 sm:p-8 sm:pb-8">
     {children}
   </div>
@@ -2787,6 +2864,9 @@ export function Navegacao() {
 ```
 
 Troque também o `metadata.title` para `'Studio'`.
+
+Se o seu scaffold tiver gerado outra fonte, use as variáveis que ele criou — não
+copie `geistSans` às cegas, ou o build falha com `Cannot find name`.
 
 A `Navegacao` fica dentro de cada página, não do layout, porque a tela `/entrar`
 não deve mostrá-la.
@@ -2825,6 +2905,8 @@ export default function Dashboard() {
   const [erro, setErro] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<Lancamento | null>(null)
+  // Incrementa a cada abertura. Ver a explicação na key do ModalLancamento.
+  const [aberturas, setAberturas] = useState(0)
 
   const carregar = useCallback(async () => {
     setErro(null)
@@ -2849,11 +2931,13 @@ export default function Dashboard() {
 
   function abrirNovo() {
     setEditando(null)
+    setAberturas((n) => n + 1)
     setModalAberto(true)
   }
 
   function abrirEdicao(lancamento: Lancamento) {
     setEditando(lancamento)
+    setAberturas((n) => n + 1)
     setModalAberto(true)
   }
 
@@ -2906,9 +2990,11 @@ export default function Dashboard() {
       </button>
 
       <ModalLancamento
-        // A key remonta o modal a cada alvo diferente. Sem ela, abrir "editar"
-        // depois de "criar" mostraria os campos antigos (ver Task 16).
-        key={editando?.id ?? 'novo'}
+        // A key remonta o modal a cada ABERTURA, não só a cada alvo diferente.
+        // Só o id não bastaria: duas criações seguidas compartilhariam a key
+        // 'novo', o componente não desmontaria, e a segunda abriria com o que
+        // foi digitado na primeira (ver Task 16).
+        key={`${editando?.id ?? 'novo'}-${aberturas}`}
         aberto={modalAberto}
         categorias={dados?.categorias ?? []}
         lancamento={editando}
@@ -2955,19 +3041,18 @@ Implementa a prioridade 3 da spec original e a regra da spec §5.
 ### Task 21: API de gastos fixos
 
 **Files:**
+- Modify: `lib/mapeamento.ts`
 - Create: `app/api/gastos-fixos/route.ts`
 - Create: `app/api/gastos-fixos/[id]/route.ts`
 
-- [ ] **Step 1: Escrever listagem e criação**
+- [ ] **Step 1: Adicionar o mapeamento do gasto fixo**
 
-`app/api/gastos-fixos/route.ts`:
+Acrescente ao fim de `lib/mapeamento.ts`:
 
 ```ts
-import { NextResponse } from 'next/server'
-import { competenciaAtual } from '@/lib/competencia'
-import { clienteServidor } from '@/lib/supabase'
+import type { GastoFixo } from './tipos'
 
-type LinhaGastoFixo = {
+export type LinhaGastoFixo = {
   id: string
   nome: string
   valor_referencia_centavos: number
@@ -2976,7 +3061,7 @@ type LinhaGastoFixo = {
   competencia_inicial: string
 }
 
-export function paraGastoFixo(linha: LinhaGastoFixo) {
+export function paraGastoFixo(linha: LinhaGastoFixo): GastoFixo {
   return {
     id: linha.id,
     nome: linha.nome,
@@ -2986,6 +3071,23 @@ export function paraGastoFixo(linha: LinhaGastoFixo) {
     competenciaInicial: linha.competencia_inicial,
   }
 }
+```
+
+> **Por que aqui e não no `route.ts`.** Um `route.ts` do App Router só pode
+> exportar handlers HTTP e um punhado de opções de config. Qualquer outro export
+> de valor faz o `next build` falhar na checagem de tipos gerada — e, pior, o
+> `tsc --noEmit` **passa** numa árvore limpa, então o erro só apareceria lá na
+> Task 30. Helper compartilhado entre rotas mora em `lib/`.
+
+- [ ] **Step 2: Escrever listagem e criação**
+
+`app/api/gastos-fixos/route.ts`:
+
+```ts
+import { NextResponse } from 'next/server'
+import { competenciaAtual } from '@/lib/competencia'
+import { paraGastoFixo, type LinhaGastoFixo } from '@/lib/mapeamento'
+import { clienteServidor } from '@/lib/supabase'
 
 export async function GET() {
   const { data, error } = await clienteServidor()
@@ -3029,7 +3131,7 @@ export async function POST(request: Request) {
 }
 ```
 
-- [ ] **Step 2: Escrever edição e remoção**
+- [ ] **Step 3: Escrever edição e remoção**
 
 `app/api/gastos-fixos/[id]/route.ts`:
 
@@ -3078,15 +3180,15 @@ export async function DELETE(_request: Request, { params }: Contexto) {
 }
 ```
 
-- [ ] **Step 3: Verificar**
+- [ ] **Step 4: Verificar**
 
 Run: `npm run typecheck`
 Expected: passa.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add app/api/gastos-fixos
+git add lib/mapeamento.ts app/api/gastos-fixos
 git commit -m "feat: gerencia gastos fixos via API"
 ```
 
@@ -3108,8 +3210,8 @@ import { NextResponse } from 'next/server'
 import { competenciaAtual, competenciaDe } from '@/lib/competencia'
 import { gastosPendentes } from '@/lib/pendencias'
 import { clienteServidor } from '@/lib/supabase'
+import { paraGastoFixo } from '@/lib/mapeamento'
 import type { GastoFixo, GastoFixoLancado } from '@/lib/tipos'
-import { paraGastoFixo } from '../gastos-fixos/route'
 
 async function carregarPendentes(competencia: string): Promise<GastoFixo[]> {
   const supabase = clienteServidor()
@@ -3148,7 +3250,13 @@ type ItemConfirmado = {
 }
 
 export async function POST(request: Request) {
-  const { itens } = (await request.json()) as { itens?: ItemConfirmado[] }
+  let itens: ItemConfirmado[] | undefined
+  try {
+    itens = ((await request.json()) as { itens?: ItemConfirmado[] }).itens
+  } catch {
+    return NextResponse.json({ erro: 'Requisição inválida.' }, { status: 400 })
+  }
+
   if (!Array.isArray(itens) || itens.length === 0) {
     return NextResponse.json({ erro: 'Nada para lançar.' }, { status: 400 })
   }
@@ -3256,7 +3364,8 @@ import type { GastoFixo } from '@/lib/tipos'
 type Props = {
   pendentes: GastoFixo[]
   competencia: string
-  onLancado: () => void
+  /** Recebe as falhas para exibir FORA do card, que remonta ao lançar. */
+  onLancado: (falhas: string[]) => void
 }
 
 export function CardPendencias({ pendentes, competencia, onLancado }: Props) {
@@ -3308,11 +3417,11 @@ export function CardPendencias({ pendentes, competencia, onLancado }: Props) {
     setEnviando(false)
 
     const corpo = (await resposta.json()) as { ok?: boolean; falhas?: string[] }
-    if (!resposta.ok || corpo.falhas?.length) {
-      setErro(corpo.falhas?.join(' ') ?? 'Não foi possível lançar.')
-    }
 
-    onLancado()
+    // As falhas sobem para o pai: este card é remontado assim que a lista de
+    // pendentes muda (ver a key na Task 23, Step 2), e um setErro local seria
+    // apagado justamente no caso de sucesso parcial, que é quando ele importa.
+    onLancado(corpo.falhas?.length ? corpo.falhas : resposta.ok ? [] : ['Não foi possível lançar.'])
     if (corpo.ok) setAberto(false)
   }
 
@@ -3397,20 +3506,36 @@ useEffect(() => {
 }, [carregarPendencias])
 ```
 
-3. Renderize logo acima do `SeletorMes`, **só quando o mês exibido é o corrente**
+3. Adicione o estado das falhas, que precisa viver no pai:
+
+```tsx
+const [falhasPendencias, setFalhasPendencias] = useState<string[]>([])
+```
+
+4. Renderize logo acima do `SeletorMes`, **só quando o mês exibido é o corrente**
    (spec §6):
 
 ```tsx
 {competencia === competenciaAtual() && (
-  <CardPendencias
-    key={pendentes.map((p) => p.id).join(',')}
-    pendentes={pendentes}
-    competencia={competencia}
-    onLancado={() => {
-      void carregar()
-      void carregarPendencias()
-    }}
-  />
+  <>
+    <CardPendencias
+      key={pendentes.map((p) => p.id).join(',')}
+      pendentes={pendentes}
+      competencia={competencia}
+      onLancado={(falhas) => {
+        setFalhasPendencias(falhas)
+        void carregar()
+        void carregarPendencias()
+      }}
+    />
+    {falhasPendencias.length > 0 && (
+      <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
+        {falhasPendencias.map((f) => (
+          <p key={f}>{f}</p>
+        ))}
+      </div>
+    )}
+  </>
 )}
 ```
 
@@ -3431,6 +3556,10 @@ npm run dev
 5. Navegar para o mês anterior **esconde** o card.
 6. Excluir no extrato a saída do PriceLabs e recarregar → o card volta a mostrar
    2 pendências (o cascade devolveu o gasto para a fila).
+7. Abrir o app em duas abas, lançar a Internet numa e depois lançar as duas na
+   outra → a aba lenta mostra a faixa âmbar "Internet já havia sido lançado
+   neste mês" e o PriceLabs entra normalmente. A mensagem tem que **permanecer**
+   na tela depois que o card se recolhe.
 
 O passo 6 é o teste mais importante do chunk: ele prova que o `ON DELETE CASCADE`
 da Task 8 está funcionando.
@@ -3464,6 +3593,8 @@ import type { Categoria, GastoFixo } from '@/lib/tipos'
 export default function Fixos() {
   const [fixos, setFixos] = useState<GastoFixo[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [pendentesIds, setPendentesIds] = useState<Set<string>>(new Set())
+  const [editando, setEditando] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [nome, setNome] = useState('')
   const [valorCentavos, setValorCentavos] = useState<number | null>(null)
@@ -3472,13 +3603,20 @@ export default function Fixos() {
   const carregar = useCallback(async () => {
     setErro(null)
     try {
-      const [fixosRes, mesRes] = await Promise.all([
+      const [fixosRes, mesRes, pendRes] = await Promise.all([
         fetch('/api/gastos-fixos'),
         fetch('/api/mes'),
+        fetch('/api/pendencias'),
       ])
       if (!fixosRes.ok || !mesRes.ok) throw new Error('falhou')
       setFixos((await fixosRes.json()) as GastoFixo[])
       setCategorias(((await mesRes.json()) as { categorias: Categoria[] }).categorias)
+
+      // Quem não está pendente já foi lançado neste mês (spec §6).
+      if (pendRes.ok) {
+        const { pendentes } = (await pendRes.json()) as { pendentes: GastoFixo[] }
+        setPendentesIds(new Set(pendentes.map((p) => p.id)))
+      }
     } catch {
       setErro('Não foi possível carregar.')
     }
@@ -3516,6 +3654,17 @@ export default function Fixos() {
     void carregar()
   }
 
+  async function salvarValor(id: string, centavos: number | null) {
+    setEditando(null)
+    if (centavos === null) return
+    await fetch(`/api/gastos-fixos/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valorReferenciaCentavos: centavos }),
+    })
+    void carregar()
+  }
+
   const nomeCategoria = (id: string) => categorias.find((c) => c.id === id)?.nome ?? '—'
 
   return (
@@ -3536,12 +3685,33 @@ export default function Fixos() {
           >
             <span className="flex flex-col">
               <span className="text-sm">{f.nome}</span>
-              <span className="text-xs text-slate-400">{nomeCategoria(f.categoriaId)}</span>
+              <span className="text-xs text-slate-400">
+                {nomeCategoria(f.categoriaId)} ·{' '}
+                {pendentesIds.has(f.id) ? (
+                  <span className="text-amber-600">pendente neste mês</span>
+                ) : (
+                  <span className="text-emerald-600">lançado neste mês</span>
+                )}
+              </span>
             </span>
             <span className="flex items-center gap-4">
-              <span className="text-sm tabular-nums text-slate-600">
-                {formatCentavos(f.valorReferenciaCentavos)}
-              </span>
+              {editando === f.id ? (
+                <span className="w-32">
+                  <CampoValor
+                    autoFocus
+                    valorCentavos={f.valorReferenciaCentavos}
+                    onChange={(c) => void salvarValor(f.id, c)}
+                  />
+                </span>
+              ) : (
+                <button
+                  onClick={() => setEditando(f.id)}
+                  aria-label={`Editar valor de ${f.nome}`}
+                  className="text-sm tabular-nums text-slate-600 underline decoration-slate-200 underline-offset-4"
+                >
+                  {formatCentavos(f.valorReferenciaCentavos)}
+                </button>
+              )}
               <button
                 onClick={() => void remover(f.id, f.nome)}
                 aria-label={`Remover ${f.nome}`}
@@ -3582,17 +3752,21 @@ export default function Fixos() {
 }
 ```
 
-> **Nota:** a edição inline de um gasto fixo existente não está nesta tela. O
-> `PATCH` da Task 21 existe e funciona; para alterar o valor de referência hoje,
-> remova e adicione de novo. Isso é deliberado — o valor mensal já é ajustável na
-> hora de confirmar a pendência, que é onde ele varia de verdade.
+> **Escopo da edição.** Só o valor de referência é editável aqui, clicando no
+> número. Nome e categoria não são — para trocá-los, remova e adicione de novo.
+> O valor é o único que muda na prática, e é justamente o campo que alimenta a
+> fila de pendências todo mês.
 
 - [ ] **Step 2: Verificar na prática**
 
-1. A tela lista Internet e PriceLabs com seus valores.
-2. Adicionar "Condomínio" R$ 450,00 em "Contas fixas" → aparece na lista.
-3. Voltar ao resumo → o card de pendências agora mostra 3 itens.
-4. Remover "Condomínio" → some da lista, e o card volta a 2.
+1. A tela lista Internet e PriceLabs com seus valores e o status do mês.
+2. Se você já lançou um deles na Task 23, ele aparece como "lançado neste mês"
+   em verde e o outro como "pendente neste mês" em âmbar.
+3. Clicar no valor da Internet abre o campo; mudar para 105,00 e sair do campo
+   salva — recarregue e confirme que ficou.
+4. Adicionar "Condomínio" R$ 450,00 em "Contas fixas" → aparece na lista.
+5. Voltar ao resumo → o card de pendências agora inclui o Condomínio.
+6. Remover "Condomínio" → some da lista, e o card volta ao que era.
 
 - [ ] **Step 3: Commit**
 
@@ -3686,17 +3860,48 @@ git commit -m "feat: cria e arquiva categorias"
 ### Task 26: API de import
 
 **Files:**
+- Create: `app/api/entradas/route.ts`
 - Create: `app/api/importar/route.ts`
 
 O endpoint recebe as linhas **já validadas e escolhidas** pelo preview. O parse
 acontece no navegador, com as funções puras da Task 7 — o servidor só grava o
 que foi confirmado.
 
-- [ ] **Step 1: Escrever o handler**
+- [ ] **Step 1: Escrever o endpoint de entradas existentes**
+
+`app/api/entradas/route.ts`:
 
 ```ts
 import { NextResponse } from 'next/server'
-import { paraLancamento, type LinhaLancamento } from '@/lib/mapeamento'
+import { clienteServidor } from '@/lib/supabase'
+
+/**
+ * Todas as entradas já gravadas, com o mínimo que a detecção de duplicados
+ * precisa. Não dá para usar /api/mes aqui: ele devolve só o mês corrente, e o
+ * histórico a importar é de 2025 — a comparação nunca encontraria nada.
+ */
+export async function GET() {
+  const { data, error } = await clienteServidor()
+    .from('lancamentos')
+    .select('data, valor_centavos')
+    .eq('tipo', 'entrada')
+
+  if (error) return NextResponse.json({ erro: error.message }, { status: 500 })
+
+  return NextResponse.json(
+    data.map((l) => ({
+      tipo: 'entrada' as const,
+      data: l.data as string,
+      valorCentavos: l.valor_centavos as number,
+    })),
+  )
+}
+```
+
+- [ ] **Step 2: Escrever o handler de import**
+
+```ts
+import { NextResponse } from 'next/server'
 import { clienteServidor } from '@/lib/supabase'
 
 type LinhaParaGravar = {
@@ -3714,11 +3919,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: 'Nada para importar.' }, { status: 400 })
   }
 
+  const positivoOuNulo = (v: number | null) => v === null || (Number.isInteger(v) && v > 0)
+
   const invalida = linhas.find(
     (l) =>
       !/^\d{4}-\d{2}-\d{2}$/.test(l.data) ||
       !Number.isInteger(l.valorCentavos) ||
-      l.valorCentavos <= 0,
+      l.valorCentavos <= 0 ||
+      !positivoOuNulo(l.noites) ||
+      !positivoOuNulo(l.hospedes),
   )
   if (invalida) {
     return NextResponse.json(
@@ -3745,21 +3954,19 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 })
 
-  return NextResponse.json({
-    importadas: (data as LinhaLancamento[]).map(paraLancamento).length,
-  })
+  return NextResponse.json({ importadas: data.length })
 }
 ```
 
-- [ ] **Step 2: Verificar**
+- [ ] **Step 3: Verificar**
 
 Run: `npm run typecheck`
 Expected: passa.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add app/api/importar/route.ts
+git add app/api/entradas/route.ts app/api/importar/route.ts
 git commit -m "feat: grava entradas importadas do CSV"
 ```
 
@@ -3782,12 +3989,19 @@ encoding vive — o parser da Task 7 recebe texto já decodificado.
 ```tsx
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatCentavos } from '@/lib/dinheiro'
-import { marcarDuplicados, parseCsvEntradas, type LinhaImportMarcada } from '@/lib/csv'
-import type { Lancamento } from '@/lib/tipos'
+import {
+  marcarDuplicados,
+  parseCsvEntradas,
+  type LancamentoExistente,
+  type LinhaImportMarcada,
+} from '@/lib/csv'
 
-/** Decodifica tentando UTF-8 e caindo para Latin-1 se vier caractere inválido. */
+/**
+ * Decodifica tentando UTF-8 e caindo para windows-1252 (o "Latin-1" que o Excel
+ * brasileiro de fato produz) quando aparece caractere de substituição.
+ */
 async function lerTexto(arquivo: File): Promise<string> {
   const bytes = await arquivo.arrayBuffer()
   const utf8 = new TextDecoder('utf-8').decode(bytes)
@@ -3801,29 +4015,48 @@ export function ImportarCsv({ onImportado }: { onImportado: () => void }) {
   const [erro, setErro] = useState<string | null>(null)
   const [resultado, setResultado] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const [texto, setTexto] = useState('')
+  const existentes = useRef<LancamentoExistente[]>([])
 
-  async function preparar(texto: string) {
+  // Busca as entradas já gravadas UMA vez, não a cada tecla digitada.
+  useEffect(() => {
+    void (async () => {
+      const resposta = await fetch('/api/entradas')
+      if (resposta.ok) existentes.current = (await resposta.json()) as LancamentoExistente[]
+    })()
+  }, [])
+
+  const preparar = useCallback((conteudo: string) => {
     setErro(null)
     setResultado(null)
-    try {
-      const existentesRes = await fetch('/api/mes')
-      const existentes = existentesRes.ok
-        ? ((await existentesRes.json()) as { lancamentos: Lancamento[] }).lancamentos
-        : []
 
-      const marcadas = marcarDuplicados(parseCsvEntradas(texto), existentes)
+    if (conteudo.trim() === '') {
+      setLinhas([])
+      setEscolhidas(new Set())
+      return
+    }
+
+    try {
+      const marcadas = marcarDuplicados(parseCsvEntradas(conteudo), existentes.current)
       setLinhas(marcadas)
       // Duplicadas e linhas com erro vêm desmarcadas (spec §7).
       setEscolhidas(
-        new Set(
-          marcadas.filter((l) => l.erro === null && !l.duplicada).map((l) => l.linha),
-        ),
+        new Set(marcadas.filter((l) => l.erro === null && !l.duplicada).map((l) => l.linha)),
       )
     } catch (e) {
       setLinhas([])
+      setEscolhidas(new Set())
       setErro((e as Error).message)
     }
-  }
+  }, [])
+
+  // Analisa 400ms depois da última tecla. Sem isso, o preview reclamaria de
+  // "cabeçalho inválido" já na primeira letra digitada, e cada tecla jogaria
+  // fora os checkboxes que o usuário tivesse marcado.
+  useEffect(() => {
+    const id = setTimeout(() => preparar(texto), 400)
+    return () => clearTimeout(id)
+  }, [texto, preparar])
 
   async function importar() {
     const paraGravar = linhas
@@ -3857,7 +4090,15 @@ export function ImportarCsv({ onImportado }: { onImportado: () => void }) {
 
     const { importadas } = (await resposta.json()) as { importadas: number }
     setResultado(`${importadas} ${importadas === 1 ? 'entrada importada' : 'entradas importadas'}.`)
+    setTexto('')
     setLinhas([])
+    setEscolhidas(new Set())
+
+    // Recarrega a base de comparação: o que acabou de entrar passa a contar
+    // como duplicata num import seguinte.
+    const atualizadas = await fetch('/api/entradas')
+    if (atualizadas.ok) existentes.current = (await atualizadas.json()) as LancamentoExistente[]
+
     onImportado()
   }
 
@@ -3879,14 +4120,18 @@ export function ImportarCsv({ onImportado }: { onImportado: () => void }) {
         accept=".csv,text/csv,text/plain"
         onChange={async (e) => {
           const arquivo = e.target.files?.[0]
-          if (arquivo) await preparar(await lerTexto(arquivo))
+          if (arquivo) setTexto(await lerTexto(arquivo))
+          // Reseta o input: sem isso, escolher o mesmo arquivo de novo depois
+          // de importar não dispara onChange nenhum.
+          e.target.value = ''
         }}
         className="text-sm"
       />
 
       <textarea
         placeholder="…ou cole o conteúdo aqui"
-        onChange={(e) => void preparar(e.target.value)}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
         rows={4}
         className="rounded-xl bg-slate-100 p-3 font-mono text-xs outline-none"
       />
@@ -4061,6 +4306,10 @@ Percorra:
 4. Os números de linha mostrados são 2, 3, 4 e 5 — os do arquivo.
 5. Importar grava 2 entradas (as duas não duplicadas e sem erro).
 6. No resumo, navegar até janeiro/2025 mostra as entradas importadas.
+7. **Subir o mesmo arquivo de novo**: agora as duas linhas boas aparecem em
+   âmbar e desmarcadas, porque já existem no banco. Este passo é o que prova que
+   a comparação contra o banco funciona — a do passo 3 testa só a repetição
+   dentro do arquivo.
 
 - [ ] **Step 4: Commit**
 
@@ -4105,6 +4354,8 @@ export function GraficoCategorias({ porCategoria, categorias }: Props) {
   const dados = porCategoria.map((item) => {
     const categoria = categorias.find((c) => c.id === item.categoriaId)
     return {
+      // Chave própria: duas categorias podem ter o mesmo nome.
+      chave: item.categoriaId ?? 'sem-categoria',
       nome: categoria?.nome ?? 'Sem categoria',
       cor: categoria?.cor ?? '#cbd5e1',
       valor: item.totalCentavos,
@@ -4131,11 +4382,14 @@ export function GraficoCategorias({ porCategoria, categorias }: Props) {
               animationDuration={350}
             >
               {dados.map((d) => (
-                <Cell key={d.nome} fill={d.cor} />
+                <Cell key={d.chave} fill={d.cor} />
               ))}
             </Pie>
             <Tooltip
-              formatter={(valor: number) => formatCentavos(valor)}
+              // No Recharts 3 o Tooltip deixou de ser genérico: anotar o
+              // parâmetro como number não compila em strict. O Number() aqui é
+              // necessário, não defensivo.
+              formatter={(valor) => formatCentavos(Number(valor))}
               contentStyle={{ borderRadius: 12, border: 'none', fontSize: 12 }}
             />
           </PieChart>
@@ -4144,7 +4398,7 @@ export function GraficoCategorias({ porCategoria, categorias }: Props) {
 
       <div className="flex flex-col gap-2">
         {dados.map((d) => (
-          <div key={d.nome} className="flex items-center gap-3 text-xs">
+          <div key={d.chave} className="flex items-center gap-3 text-xs">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.cor }} />
             <span className="flex-1 text-slate-600">{d.nome}</span>
             <span className="tabular-nums text-slate-500">{formatCentavos(d.valor)}</span>
@@ -4158,7 +4412,13 @@ export function GraficoCategorias({ porCategoria, categorias }: Props) {
 
 - [ ] **Step 2: Encaixar no dashboard**
 
-Em `app/page.tsx`, dentro do bloco `{dados && (...)}`, entre `CartoesTotais` e
+Em `app/page.tsx`, adicione o import:
+
+```tsx
+import { GraficoCategorias } from '@/components/GraficoCategorias'
+```
+
+e renderize dentro do bloco `{dados && (...)}`, entre `CartoesTotais` e
 `Extrato`:
 
 ```tsx
@@ -4263,10 +4523,14 @@ nome aparecer num arquivo com `'use client'`, pare e corrija: essa variável iri
 para o bundle do navegador.
 
 ```bash
-grep -rn "use client" $(grep -rl "clienteServidor" app components lib)
+grep -rln "^'use client'" $(grep -rl "clienteServidor" app components lib)
 ```
 
 Expected: nenhuma saída. Nenhum componente cliente pode importar o Supabase.
+
+O `^` na expressão importa: sem ele, o próprio `lib/supabase.ts` casaria, porque
+o comentário dele menciona `'use client'` no meio do texto — e você perseguiria
+um alarme falso.
 
 - [ ] **Step 3: Escrever o README**
 
@@ -4299,34 +4563,43 @@ idempotente: pode rodar de novo sem duplicar o seed.
 
 ## Testes
 
-`npm test` — cobre a lógica de dinheiro, competência, pendências, CSV e o token
-de sessão. A interface não tem teste automatizado, por decisão registrada na
-spec.
+`npm test` — cobre dinheiro, competência, totais, mapeamento, pendências, CSV e
+o token de sessão. A interface não tem teste automatizado, por decisão
+registrada na spec.
 ```
 
-- [ ] **Step 4: Publicar**
-
-```bash
-git push
-```
-
-Na Vercel: importar o repositório, marcar o projeto como privado e cadastrar as
-quatro variáveis de ambiente em *Settings → Environment Variables*.
-
-- [ ] **Step 5: Verificar em produção**
-
-1. Abrir a URL num navegador anônimo redireciona para `/entrar`.
-2. O PIN certo entra; recarregar continua dentro.
-3. Lançar uma entrada pelo celular e abrir no computador mostra o lançamento —
-   este é o requisito que motivou o banco hospedado.
-4. Errar o PIN 6 vezes seguidas devolve "Muitas tentativas".
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commitar antes de publicar**
 
 ```bash
 git add README.md
 git commit -m "docs: documenta configuração e publicação"
 ```
+
+- [ ] **Step 5: Criar o repositório remoto**
+
+O projeto nasceu de um `git init` local, sem remote. Crie o repositório
+**privado** — ele guarda o histórico financeiro e o `schema.sql`:
+
+```bash
+gh repo create studio-financeiro --private --source=. --push
+```
+
+Se preferir criar pela interface do GitHub, adicione o remote à mão e
+`git push -u origin main`.
+
+- [ ] **Step 6: Publicar**
+
+Na Vercel: importar o repositório, marcar o projeto como privado e cadastrar as
+quatro variáveis de ambiente em *Settings → Environment Variables*.
+
+- [ ] **Step 7: Verificar em produção**
+
+1. Abrir a URL num navegador anônimo redireciona para `/entrar`.
+2. O PIN certo entra; recarregar continua dentro.
+3. Lançar uma entrada pelo celular e abrir no computador mostra o lançamento —
+   este é o requisito que motivou o banco hospedado.
+4. Errar o PIN 6 vezes seguidas devolve "Muitas tentativas". Espere 15 minutos
+   (ou apague a linha em `tentativas_pin` pelo SQL Editor) para voltar a entrar.
 
 ---
 
