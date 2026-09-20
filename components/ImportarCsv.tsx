@@ -155,7 +155,8 @@ export function ImportarCsv({ onImportado }: { onImportado: () => void }) {
           <p className="text-xs text-slate-500">
             {validas} {validas === 1 ? 'linha válida' : 'linhas válidas'}
             {comErro > 0 && `, ${comErro} com erro`}
-            {duplicadas > 0 && `, ${duplicadas} provável duplicada`}
+            {duplicadas > 0 &&
+              `, ${duplicadas} ${duplicadas === 1 ? 'provável duplicada' : 'prováveis duplicadas'}`}
           </p>
 
           <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-100">
