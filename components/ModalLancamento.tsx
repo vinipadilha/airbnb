@@ -7,6 +7,7 @@ import { noitesEntre, somarDias } from '@/lib/calendario'
 import type { Categoria, Lancamento, TipoLancamento } from '@/lib/tipos'
 import { formatCentavos } from '@/lib/dinheiro'
 import { CampoValor } from './CampoValor'
+import { SeletorData } from './SeletorData'
 import { SeletorPeriodo } from './SeletorPeriodo'
 
 type Props = {
@@ -167,15 +168,15 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
                 )}
               </div>
             ) : (
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-500">Data</span>
-                <input
-                  type="date"
-                  value={data}
-                  onChange={(e) => setData(e.target.value)}
-                  className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
-                />
-              </label>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-slate-500">Data</span>
+                  <span className="text-xs tabular-nums text-slate-400">
+                    {rotuloCurto(data)}
+                  </span>
+                </div>
+                <SeletorData valor={data} onChange={setData} />
+              </div>
             )}
 
             {tipo === 'entrada' && (

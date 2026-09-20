@@ -6,6 +6,7 @@ import { hojeEmSaoPaulo } from '@/lib/competencia'
 import { formatCentavos, parseValorBRL } from '@/lib/dinheiro'
 import type { Rateio } from '@/lib/rateio'
 import type { Configuracoes, Repasse } from '@/lib/tipos'
+import { SeletorData } from './SeletorData'
 import { ValorAnimado } from './ValorAnimado'
 
 type Props = {
@@ -177,25 +178,25 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
               transition={{ duration: 0.15 }}
               className="flex flex-col gap-2"
             >
-              <div className="flex gap-2">
-                <div className="flex flex-1 items-center gap-1 rounded-xl bg-slate-100 px-3 py-2.5">
-                  <span className="text-xs text-slate-400">R$</span>
-                  <input
-                    autoFocus
-                    inputMode="decimal"
-                    value={texto}
-                    onChange={(e) => setTexto(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full bg-transparent text-right text-sm tabular-nums outline-none"
-                  />
-                </div>
+              <div className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2.5">
+                <span className="text-xs text-slate-400">R$</span>
                 <input
-                  type="date"
-                  value={data}
-                  onChange={(e) => setData(e.target.value)}
-                  className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm outline-none"
+                  autoFocus
+                  inputMode="decimal"
+                  value={texto}
+                  onChange={(e) => setTexto(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full bg-transparent text-right text-sm tabular-nums outline-none"
                 />
               </div>
+
+              <div className="flex items-baseline justify-between px-1">
+                <span className="text-[11px] text-slate-500">Data do Pix</span>
+                <span className="text-[11px] tabular-nums text-slate-500">
+                  {rotuloCurto(data)}
+                </span>
+              </div>
+              <SeletorData valor={data} onChange={setData} />
 
               {erro && <p className="text-xs text-red-600">{erro}</p>}
 
@@ -214,7 +215,7 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
                   disabled={salvando}
                   className="flex-1 rounded-xl bg-slate-900 py-2.5 text-sm text-white disabled:opacity-40"
                 >
-                  {salvando ? 'Registrando…' : 'Registrar Pix'}
+                  {salvando ? 'Registrando…' : 'Registrar repasse'}
                 </button>
               </div>
             </motion.div>
@@ -228,7 +229,7 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
               onClick={preencherComOQueFalta}
               className="rounded-xl border border-slate-200 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50"
             >
-              Registrar Pix para {nomeSocio}
+              Registrar repasse
             </motion.button>
           )}
         </AnimatePresence>
