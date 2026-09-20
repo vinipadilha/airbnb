@@ -1,4 +1,3 @@
-import { receitaNoMes } from './calendario'
 import { competenciaDe } from './competencia'
 import type { Categoria, Lancamento, Repasse } from './tipos'
 
@@ -40,13 +39,14 @@ export function calcularRateio(
   let gastosCentavos = 0
 
   for (const l of lancamentos) {
+    if (competenciaDe(l.data) !== competencia) continue
+
     if (l.tipo === 'entrada') {
       // Só divide o que entrou de verdade: repassar sobre reserva programada
       // seria pagar o sócio com dinheiro que ainda não existe.
-      if (l.recebido) entradasCentavos += receitaNoMes(l, competencia)
+      if (l.recebido) entradasCentavos += l.valorCentavos
       continue
     }
-    if (competenciaDe(l.data) !== competencia) continue
 
     // Categoria marcada como fora do rateio fica de fora da conta inteira.
     // Categoria que sumiu do cadastro conta como gasto operacional: é o

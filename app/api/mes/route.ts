@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { diariaMediaDoMes, diasDoMes, noitesNoMes, ocupacaoDoMes } from '@/lib/calendario'
+import { diariaMediaDoMes, diasDoMes, ocupacaoDoMes } from '@/lib/calendario'
 import { competenciaAtual, competenciaDe } from '@/lib/competencia'
 import { paraLancamento, type LinhaLancamento } from '@/lib/mapeamento'
 import { carregarConfiguracoes } from '@/lib/configuracoes'
@@ -58,11 +58,9 @@ export async function GET(request: Request) {
     }),
   )
 
-  // Uma reserva pertence ao mês se alguma das suas noites cai nele — não só
-  // se o check-in caiu. É o que faz a estadia longa aparecer nos meses do meio.
-  const doMes = todos.filter(
-    (l) => competenciaDe(l.data) === competencia || noitesNoMes(l, competencia) > 0,
-  )
+  // Regime de caixa: o lançamento pertence ao mês da sua data, mesmo que a
+  // estadia atravesse a virada. O Airbnb paga uma vez, após o check-in.
+  const doMes = todos.filter((l) => competenciaDe(l.data) === competencia)
 
   return NextResponse.json({
     competencia,

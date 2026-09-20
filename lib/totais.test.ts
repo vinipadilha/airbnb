@@ -51,14 +51,15 @@ test('totaisDoMes aceita saldo negativo', () => {
   assert.equal(totaisDoMes(caros, '2026-09').saldo, -2000)
 })
 
-test('totaisDoMes rateia uma reserva que atravessa meses', () => {
-  const longa = lanc({
+test('reserva que atravessa meses conta inteira no mês do check-in', () => {
+  const atravessa = lanc({
     id: 'L', tipo: 'entrada', data: '2026-09-28', valorCentavos: 100000, origem: 'Airbnb',
   })
-  longa.dataFim = '2026-10-08'
-  // 10 noites a 10.000: 3 em setembro (28, 29, 30) e 7 em outubro.
-  assert.equal(totaisDoMes([longa], '2026-09').entradas, 30000)
-  assert.equal(totaisDoMes([longa], '2026-10').entradas, 70000)
+  atravessa.dataFim = '2026-10-08'
+  // O Airbnb paga uma vez, logo após o check-in: o dinheiro entra em setembro
+  // inteiro, não fatiado entre setembro e outubro.
+  assert.equal(totaisDoMes([atravessa], '2026-09').entradas, 100000)
+  assert.equal(totaisDoMes([atravessa], '2026-10').entradas, 0)
 })
 
 test('entrada programada fica fora das entradas e do saldo', () => {

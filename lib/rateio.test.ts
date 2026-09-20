@@ -115,3 +115,12 @@ test('categoria fora do rateio não é gasto operacional nem repasse', () => {
   assert.equal(r.gastosCentavos, 0)
   assert.equal(r.repassadoCentavos, 0)
 })
+
+test('reserva que atravessa meses entra inteira no rateio do mês do check-in', () => {
+  const atravessa = lanc({
+    id: 'a', tipo: 'entrada', data: '2026-09-28', valorCentavos: 100000, origem: 'Airbnb',
+  })
+  atravessa.dataFim = '2026-10-08'
+  assert.equal(calcularRateio([atravessa], categorias, [], '2026-09', 12).entradasCentavos, 100000)
+  assert.equal(calcularRateio([atravessa], categorias, [], '2026-10', 12).entradasCentavos, 0)
+})

@@ -2,29 +2,18 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
-import { noitesDe, noitesNoMes, receitaNoMes } from '@/lib/calendario'
+import { noitesDe } from '@/lib/calendario'
 import { formatCentavos } from '@/lib/dinheiro'
 import type { Categoria, Lancamento } from '@/lib/tipos'
 
 type Props = {
   lancamentos: Lancamento[]
   categorias: Categoria[]
-  competencia: string
   onEditar: (lancamento: Lancamento) => void
 }
 
 /** Quantos itens na mesma categoria e no mesmo dia justificam agrupar. */
 const MINIMO_PARA_AGRUPAR = 3
-
-/**
- * Quanto deste lançamento pertence ao mês exibido.
- *
- * Uma reserva que atravessa a virada do mês aparece nos dois meses; mostrar o
- * valor cheio nos dois faria a soma da lista não bater com o total do card.
- */
-function valorNoMes(l: Lancamento, competencia: string): number {
-  return l.tipo === 'entrada' ? receitaNoMes(l, competencia) : l.valorCentavos
-}
 
 type Grupo = {
   chave: string
@@ -79,7 +68,7 @@ function rotuloDia(data: string): string {
   return `${dia}/${mes}`
 }
 
-export function Extrato({ lancamentos, categorias, competencia, onEditar }: Props) {
+export function Extrato({ lancamentos, categorias, onEditar }: Props) {
   const [abertos, setAbertos] = useState<Set<string>>(new Set())
 
   if (lancamentos.length === 0) {
@@ -95,9 +84,6 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
     categorias.find((c) => c.id === id)?.nome ?? 'Sem categoria'
   const corCategoria = (id: string | null) =>
     categorias.find((c) => c.id === id)?.cor ?? '#cbd5e1'
-
-  const parcial = (l: Lancamento) =>
-    l.tipo === 'entrada' && noitesDe(l) > 0 && noitesNoMes(l, competencia) < noitesDe(l)
 
   const porDia = new Map<string, Lancamento[]>()
   for (const l of lancamentos) porDia.set(l.data, [...(porDia.get(l.data) ?? []), l])
@@ -118,7 +104,7 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
         // Programado não entra no subtotal do dia: não é dinheiro que entrou.
         const totalDoDia = doDia.reduce((t, l) => {
           if (l.tipo === 'saida') return t - l.valorCentavos
-          return l.recebido ? t + valorNoMes(l, competencia) : t
+          return l.recebido ? t + l.valorCentavos : t
         }, 0)
 
         return (
@@ -235,7 +221,9 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                         </span>
                         <span className="text-xs text-slate-400">
                           {l.tipo === 'entrada' ? l.origem : nomeCategoria(l.categoriaId)}
-                          {parcial(l) && ` · ${noitesNoMes(l, competencia)} de ${noitesDe(l)} noites`}
+                          {l.tipo === 'entrada' &&
+                            noitesDe(l) > 0 &&
+                            ` · ${noitesDe(l)} ${noitesDe(l) === 1 ? 'noite' : 'noites'}`}
                           {l.tipo === 'entrada' && !l.recebido && (
                             <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
                               programado
@@ -260,13 +248,8 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                           }`}
                         >
                           {l.tipo === 'entrada' ? '+' : '−'}{' '}
-                          {formatCentavos(valorNoMes(l, competencia))}
+                          {formatCentavos(l.valorCentavos)}
                         </span>
-                        {parcial(l) && (
-                          <span className="text-[11px] tabular-nums text-slate-400">
-                            de {formatCentavos(l.valorCentavos)}
-                          </span>
-                        )}
                       </span>
                       <span className="text-slate-300">›</span>
                     </span>
