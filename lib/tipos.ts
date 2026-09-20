@@ -27,6 +27,12 @@ export type Lancamento = {
   /** Só em entradas. */
   origem: string | null
   hospedes: number | null
+  /**
+   * Falso enquanto o dinheiro não caiu na conta. Reserva programada não entra
+   * no saldo, nem no rateio, nem nas entradas do mês — só aparece como
+   * previsão. Saídas são sempre true.
+   */
+  recebido: boolean
   criadoEm: string
 }
 

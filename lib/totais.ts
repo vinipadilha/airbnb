@@ -3,8 +3,12 @@ import { competenciaDe } from './competencia'
 import type { Lancamento } from './tipos'
 
 export type TotaisMes = {
+  /** Só o que já caiu na conta. */
   entradas: number
+  /** Reservas do mês que ainda não foram recebidas. */
+  entradasProgramadas: number
   saidas: number
+  /** entradas recebidas − saídas. Programado não entra. */
   saldo: number
 }
 
@@ -26,23 +30,28 @@ function doMes(lancamentos: Lancamento[], competencia: string): Lancamento[] {
  */
 export function totaisDoMes(lancamentos: Lancamento[], competencia: string): TotaisMes {
   let entradas = 0
+  let entradasProgramadas = 0
   let saidas = 0
 
   for (const l of lancamentos) {
     if (l.tipo === 'entrada') {
-      entradas += receitaNoMes(l, competencia)
+      // Programado é previsão, não dinheiro: fica num balde à parte para não
+      // inflar o saldo com reserva que o hóspede ainda pode cancelar.
+      if (l.recebido) entradas += receitaNoMes(l, competencia)
+      else entradasProgramadas += receitaNoMes(l, competencia)
     } else if (competenciaDe(l.data) === competencia) {
       saidas += l.valorCentavos
     }
   }
-  return { entradas, saidas, saldo: entradas - saidas }
+  return { entradas, entradasProgramadas, saidas, saldo: entradas - saidas }
 }
 
+/** Saldo do histórico inteiro. Entrada programada não conta: não é dinheiro. */
 export function saldoAcumulado(lancamentos: Lancamento[]): number {
-  return lancamentos.reduce(
-    (total, l) => (l.tipo === 'entrada' ? total + l.valorCentavos : total - l.valorCentavos),
-    0,
-  )
+  return lancamentos.reduce((total, l) => {
+    if (l.tipo === 'saida') return total - l.valorCentavos
+    return l.recebido ? total + l.valorCentavos : total
+  }, 0)
 }
 
 export function saidasPorCategoria(

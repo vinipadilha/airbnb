@@ -41,7 +41,9 @@ export function calcularRateio(
 
   for (const l of lancamentos) {
     if (l.tipo === 'entrada') {
-      entradasCentavos += receitaNoMes(l, competencia)
+      // Só divide o que entrou de verdade: repassar sobre reserva programada
+      // seria pagar o sócio com dinheiro que ainda não existe.
+      if (l.recebido) entradasCentavos += receitaNoMes(l, competencia)
       continue
     }
     if (competenciaDe(l.data) !== competencia) continue

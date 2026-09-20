@@ -19,6 +19,7 @@ function entrada(
     categoriaId: null,
     origem: 'Airbnb',
     hospedes: null,
+    recebido: true,
     criadoEm: '',
     ...p,
   }
@@ -36,7 +37,8 @@ test('noitesDe conta a diferença entre check-in e check-out', () => {
 test('noitesDe de saída é zero', () => {
   const saida: Lancamento = {
     id: 's', tipo: 'saida', data: '2026-09-05', dataFim: null, valorCentavos: 9800,
-    descricao: 'Internet', categoriaId: 'c', origem: null, hospedes: null, criadoEm: '',
+    descricao: 'Internet', categoriaId: 'c', origem: null, hospedes: null,
+    recebido: true, criadoEm: '',
   }
   assert.equal(noitesDe(saida), 0)
 })

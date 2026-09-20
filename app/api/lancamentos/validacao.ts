@@ -51,6 +51,9 @@ export function validarCorpo(corpo: unknown):
       categoriaId: typeof c.categoriaId === 'string' ? c.categoriaId : null,
       origem: typeof c.origem === 'string' ? c.origem : null,
       hospedes: Number.isInteger(c.hospedes) ? (c.hospedes as number) : null,
+      // Omitir recebido significa "já caiu": é o caso normal de quem lança
+      // um gasto ou uma reserva que já foi paga.
+      recebido: c.recebido !== false,
     },
   }
 }

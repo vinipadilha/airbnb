@@ -28,7 +28,11 @@ create table if not exists lancamentos (
   -- no formulário de entrada, não no banco.
   origem text,
   hospedes integer check (hospedes is null or hospedes > 0),
+  -- Falso enquanto o dinheiro não caiu: reserva programada fica fora do
+  -- saldo, das entradas e do rateio. Ver migracao-005-programado.sql.
+  recebido boolean not null default true,
   criado_em timestamptz not null default now(),
+  constraint saida_sempre_recebida check (tipo = 'entrada' or recebido = true),
   constraint campos_por_tipo check (
     (tipo = 'saida'
       and categoria_id is not null

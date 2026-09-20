@@ -48,6 +48,8 @@ export async function POST(request: Request) {
         descricao: l.descricao,
         origem: 'Airbnb',
         hospedes: l.hospedes,
+        // Importação é histórico: dinheiro que já entrou.
+        recebido: true,
       })),
     )
     .select()

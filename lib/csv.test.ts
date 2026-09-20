@@ -108,7 +108,7 @@ test('marcarDuplicados acusa linha já existente no banco', () => {
     {
       id: '1', tipo: 'entrada', data: '2026-09-03', dataFim: null,
       valorCentavos: 50000, descricao: 'R', categoriaId: null, origem: 'Airbnb',
-      hospedes: null, criadoEm: '',
+      hospedes: null, recebido: true, criadoEm: '',
     } satisfies Lancamento,
   ]
   const linhas = parseCsvEntradas('data,valor,descricao\n2026-09-03,500,Outra descrição')

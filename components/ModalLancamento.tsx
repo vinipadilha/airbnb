@@ -37,6 +37,7 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
     lancamento?.dataFim ?? somarDias(lancamento?.data ?? hojeEmSaoPaulo(), 1),
   )
   const [hospedes, setHospedes] = useState(lancamento?.hospedes?.toString() ?? '')
+  const [recebido, setRecebido] = useState(lancamento?.recebido ?? true)
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -68,6 +69,7 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
       origem: tipo === 'entrada' ? origem : null,
       dataFim: tipo === 'entrada' ? dataFim : null,
       hospedes: tipo === 'entrada' && hospedes !== '' ? Number(hospedes) : null,
+      recebido: tipo === 'entrada' ? recebido : true,
     }
 
     const resposta = await fetch(
@@ -174,6 +176,34 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
                   className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
                 />
               </label>
+            )}
+
+            {tipo === 'entrada' && (
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2 rounded-xl bg-slate-100 p-1">
+                  {[
+                    { valor: true, rotulo: 'Já recebi' },
+                    { valor: false, rotulo: 'Programado' },
+                  ].map((op) => (
+                    <button
+                      key={String(op.valor)}
+                      type="button"
+                      onClick={() => setRecebido(op.valor)}
+                      className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
+                        recebido === op.valor ? 'bg-white shadow-sm' : 'text-slate-500'
+                      }`}
+                    >
+                      {op.rotulo}
+                    </button>
+                  ))}
+                </div>
+                {!recebido && (
+                  <span className="px-1 text-xs text-slate-400">
+                    Fica fora do saldo, das entradas e do rateio até você marcar
+                    como recebido.
+                  </span>
+                )}
+              </div>
             )}
 
             <label className="flex flex-col gap-1">

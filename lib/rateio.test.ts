@@ -11,7 +11,7 @@ const categorias = [limpeza]
 function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' | 'valorCentavos'>): Lancamento {
   return {
     dataFim: null, descricao: '', categoriaId: null, origem: null,
-    hospedes: null, criadoEm: '', ...p,
+    hospedes: null, recebido: true, criadoEm: '', ...p,
   }
 }
 
@@ -87,6 +87,16 @@ test('mês no prejuízo divide o prejuízo na mesma proporção', () => {
   assert.ok(r.suaParteCentavos < 0)
   assert.ok(r.parteDoSocioCentavos < 0)
   assert.equal(r.suaParteCentavos + r.parteDoSocioCentavos, r.liquidoCentavos)
+})
+
+test('entrada programada não entra no rateio', () => {
+  const programada = lanc({
+    id: 'p', tipo: 'entrada', data: '2026-09-28', valorCentavos: 100000, origem: 'Airbnb',
+  })
+  programada.recebido = false
+  const r = calcularRateio([entrada, gasto, programada], categorias, [], '2026-09', 12)
+  assert.equal(r.entradasCentavos, 324158)
+  assert.equal(r.liquidoCentavos, 211272)
 })
 
 test('mês vazio devolve tudo zerado', () => {

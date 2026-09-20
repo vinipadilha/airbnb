@@ -7,6 +7,7 @@ function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' |
   return {
     descricao: 'x',
     dataFim: null,
+    recebido: true,
     categoriaId: null,
     origem: null,
     hospedes: null,
@@ -27,6 +28,7 @@ const base: Lancamento[] = [
 test('totaisDoMes soma só o mês pedido', () => {
   assert.deepEqual(totaisDoMes(base, '2026-09'), {
     entradas: 80000,
+    entradasProgramadas: 0,
     saidas: 21800,
     saldo: 58200,
   })
@@ -35,6 +37,7 @@ test('totaisDoMes soma só o mês pedido', () => {
 test('totaisDoMes devolve zeros em mês sem lançamento', () => {
   assert.deepEqual(totaisDoMes(base, '2026-07'), {
     entradas: 0,
+    entradasProgramadas: 0,
     saidas: 0,
     saldo: 0,
   })
@@ -56,6 +59,25 @@ test('totaisDoMes rateia uma reserva que atravessa meses', () => {
   // 10 noites a 10.000: 3 em setembro (28, 29, 30) e 7 em outubro.
   assert.equal(totaisDoMes([longa], '2026-09').entradas, 30000)
   assert.equal(totaisDoMes([longa], '2026-10').entradas, 70000)
+})
+
+test('entrada programada fica fora das entradas e do saldo', () => {
+  const programada = lanc({
+    id: 'P', tipo: 'entrada', data: '2026-09-25', valorCentavos: 70000, origem: 'Airbnb',
+  })
+  programada.recebido = false
+  const r = totaisDoMes([...base, programada], '2026-09')
+  assert.equal(r.entradas, 80000)
+  assert.equal(r.entradasProgramadas, 70000)
+  assert.equal(r.saldo, 58200)
+})
+
+test('saldoAcumulado ignora o que ainda não foi recebido', () => {
+  const programada = lanc({
+    id: 'P', tipo: 'entrada', data: '2026-09-25', valorCentavos: 70000, origem: 'Airbnb',
+  })
+  programada.recebido = false
+  assert.equal(saldoAcumulado([...base, programada]), saldoAcumulado(base))
 })
 
 test('saldoAcumulado considera o histórico inteiro', () => {

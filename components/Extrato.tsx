@@ -115,10 +115,11 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
   return (
     <div className="flex flex-col gap-5">
       {dias.map(([data, doDia]) => {
-        const totalDoDia = doDia.reduce(
-          (t, l) => t + (l.tipo === 'entrada' ? valorNoMes(l, competencia) : -l.valorCentavos),
-          0,
-        )
+        // Programado não entra no subtotal do dia: não é dinheiro que entrou.
+        const totalDoDia = doDia.reduce((t, l) => {
+          if (l.tipo === 'saida') return t - l.valorCentavos
+          return l.recebido ? t + valorNoMes(l, competencia) : t
+        }, 0)
 
         return (
           <div key={data} className="flex flex-col gap-1.5">
@@ -235,6 +236,11 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                         <span className="text-xs text-slate-400">
                           {l.tipo === 'entrada' ? l.origem : nomeCategoria(l.categoriaId)}
                           {parcial(l) && ` · ${noitesNoMes(l, competencia)} de ${noitesDe(l)} noites`}
+                          {l.tipo === 'entrada' && !l.recebido && (
+                            <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+                              programado
+                            </span>
+                          )}
                         </span>
                       </span>
                     </span>
@@ -246,7 +252,11 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                       <span className="flex flex-col items-end">
                         <span
                           className={`text-sm tabular-nums ${
-                            l.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
+                            l.tipo === 'saida'
+                              ? 'text-red-600'
+                              : l.recebido
+                                ? 'text-emerald-600'
+                                : 'text-slate-400'
                           }`}
                         >
                           {l.tipo === 'entrada' ? '+' : '−'}{' '}

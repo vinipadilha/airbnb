@@ -10,6 +10,7 @@ export type LinhaLancamento = {
   categoria_id: string | null
   origem: string | null
   hospedes: number | null
+  recebido: boolean
   criado_em: string
 }
 
@@ -26,6 +27,9 @@ export function paraLancamento(linha: LinhaLancamento): Lancamento {
     categoriaId: linha.categoria_id,
     origem: linha.origem,
     hospedes: linha.hospedes,
+    // Banco sem a migração 005 não tem a coluna: tratar como recebido
+    // preserva o comportamento anterior em vez de zerar o saldo.
+    recebido: linha.recebido !== false,
     criadoEm: linha.criado_em,
   }
 }
@@ -46,6 +50,8 @@ export function paraLinhaLancamento(entrada: EntradaLancamento) {
     categoria_id: ehEntrada ? null : entrada.categoriaId,
     origem: ehEntrada ? entrada.origem : null,
     hospedes: ehEntrada ? entrada.hospedes : null,
+    // Saída não tem "programado": o gasto é lançado quando acontece.
+    recebido: ehEntrada ? entrada.recebido : true,
   }
 }
 

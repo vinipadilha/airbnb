@@ -41,6 +41,11 @@ export function CartoesTotais({ totais, saldoTotalCentavos }: Props) {
         <div className="flex flex-col gap-1 rounded-2xl bg-white p-5 shadow-sm">
           <span className="text-xs text-slate-500">Entradas</span>
           <ValorAnimado centavos={totais.entradas} className="text-lg text-emerald-600" />
+          {totais.entradasProgramadas > 0 && (
+            <span className="text-[11px] tabular-nums text-slate-400">
+              programado {formatCentavos(totais.entradasProgramadas)}
+            </span>
+          )}
         </div>
         <div className="flex flex-col gap-1 rounded-2xl bg-white p-5 shadow-sm">
           <span className="text-xs text-slate-500">Saídas</span>
