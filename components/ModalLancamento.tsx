@@ -7,6 +7,7 @@ import { noitesEntre, somarDias } from '@/lib/calendario'
 import type { Categoria, Lancamento, TipoLancamento } from '@/lib/tipos'
 import { formatCentavos } from '@/lib/dinheiro'
 import { CampoValor } from './CampoValor'
+import { SeletorPeriodo } from './SeletorPeriodo'
 
 type Props = {
   aberto: boolean
@@ -15,6 +16,12 @@ type Props = {
   lancamento: Lancamento | null
   onFechar: () => void
   onSalvo: () => void
+}
+
+/** 2026-09-21 -> 21/09 */
+function rotuloCurto(data: string): string {
+  const [, mes, dia] = data.split('-')
+  return `${dia}/${mes}`
 }
 
 export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSalvo }: Props) {
@@ -114,7 +121,7 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full max-w-md flex-col gap-4 rounded-t-3xl bg-white p-6 sm:rounded-3xl"
+            className="flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-6 sm:max-h-[90dvh] sm:rounded-3xl"
           >
             <div className="flex gap-2 rounded-xl bg-slate-100 p-1">
               {(['entrada', 'saida'] as const).map((t) => (
@@ -133,31 +140,29 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
             <CampoValor autoFocus valorCentavos={valorCentavos} onChange={setValorCentavos} />
 
             {tipo === 'entrada' ? (
-              <div className="flex items-end gap-3">
-                <label className="flex flex-1 flex-col gap-1">
-                  <span className="text-xs text-slate-500">Check-in</span>
-                  <input
-                    type="date"
-                    value={data}
-                    onChange={(e) => {
-                      setData(e.target.value)
-                      // Empurra o check-out junto, para nunca ficar antes do
-                      // check-in enquanto o usuário mexe nas datas.
-                      if (dataFim <= e.target.value) setDataFim(somarDias(e.target.value, 1))
-                    }}
-                    className="w-full rounded-xl bg-slate-100 px-4 py-3 outline-none"
-                  />
-                </label>
-                <label className="flex flex-1 flex-col gap-1">
-                  <span className="text-xs text-slate-500">Check-out</span>
-                  <input
-                    type="date"
-                    value={dataFim}
-                    min={somarDias(data, 1)}
-                    onChange={(e) => setDataFim(e.target.value)}
-                    className="w-full rounded-xl bg-slate-100 px-4 py-3 outline-none"
-                  />
-                </label>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-slate-500">Período da estadia</span>
+                  <span className="text-xs tabular-nums text-slate-400">
+                    {rotuloCurto(data)} → {rotuloCurto(dataFim)}
+                  </span>
+                </div>
+                <SeletorPeriodo
+                  inicio={data}
+                  fim={dataFim}
+                  onChange={(inicio, fim) => {
+                    setData(inicio)
+                    setDataFim(fim)
+                  }}
+                />
+                {valorCentavos !== null && dataFim > data && (
+                  <span className="px-1 text-xs text-slate-400">
+                    {formatCentavos(
+                      Math.round(valorCentavos / noitesEntre(data, dataFim)),
+                    )}{' '}
+                    por noite
+                  </span>
+                )}
               </div>
             ) : (
               <label className="flex flex-col gap-1">
@@ -169,15 +174,6 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
                   className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
                 />
               </label>
-            )}
-
-            {tipo === 'entrada' && dataFim > data && (
-              <span className="-mt-2 text-xs text-slate-400">
-                {noitesEntre(data, dataFim)}{' '}
-                {noitesEntre(data, dataFim) === 1 ? 'noite' : 'noites'}
-                {valorCentavos !== null &&
-                  ` · ${formatCentavos(Math.round(valorCentavos / noitesEntre(data, dataFim)))} por noite`}
-              </span>
             )}
 
             <label className="flex flex-col gap-1">
