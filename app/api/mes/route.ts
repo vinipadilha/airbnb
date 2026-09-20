@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { diariaMediaDoMes, diasDoMes, noitesNoMes, ocupacaoDoMes } from '@/lib/calendario'
 import { competenciaAtual, competenciaDe } from '@/lib/competencia'
 import { paraLancamento, type LinhaLancamento } from '@/lib/mapeamento'
+import { carregarConfiguracoes } from '@/lib/configuracoes'
 import { calcularRateio } from '@/lib/rateio'
 import { clienteServidor } from '@/lib/supabase'
 import { saidasPorCategoria, saldoAcumulado, totaisDoMes } from '@/lib/totais'
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
     entraNoRateio: c.entra_no_rateio !== false,
   }))
 
-  const percentualSeu = Number(process.env.PERCENTUAL_GESTAO ?? 12)
+  const config = await carregarConfiguracoes()
 
   // Uma reserva pertence ao mês se alguma das suas noites cai nele — não só
   // se o check-in caiu. É o que faz a estadia longa aparecer nos meses do meio.
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
     saldoTotalCentavos: saldoAcumulado(todos),
     porCategoria: saidasPorCategoria(todos, competencia),
     categorias,
-    rateio: calcularRateio(todos, categorias, competencia, percentualSeu),
-    percentualSeu,
+    rateio: calcularRateio(todos, categorias, competencia, config.percentualGestao),
+    configuracoes: config,
   })
 }

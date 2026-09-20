@@ -46,3 +46,9 @@ export type GastoFixoLancado = {
   competencia: string
   lancamentoId: string
 }
+
+export type Configuracoes = {
+  /** Quanto do líquido fica com você, de 0 a 100. O sócio fica com o resto. */
+  percentualGestao: number
+  nomeSocio: string
+}

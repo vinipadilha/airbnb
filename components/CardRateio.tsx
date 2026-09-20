@@ -2,14 +2,16 @@
 
 import { formatCentavos } from '@/lib/dinheiro'
 import type { Rateio } from '@/lib/rateio'
+import type { Configuracoes } from '@/lib/tipos'
 import { ValorAnimado } from './ValorAnimado'
 
 type Props = {
   rateio: Rateio
-  percentualSeu: number
+  configuracoes: Configuracoes
 }
 
-export function CardRateio({ rateio, percentualSeu }: Props) {
+export function CardRateio({ rateio, configuracoes }: Props) {
+  const { percentualGestao: percentualSeu, nomeSocio } = configuracoes
   const { liquidoCentavos, suaParteCentavos, parteDoSocioCentavos } = rateio
   const { repassadoCentavos, aRepassarCentavos } = rateio
 
@@ -45,7 +47,7 @@ export function CardRateio({ rateio, percentualSeu }: Props) {
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
             <span className="h-2 w-2 rounded-full bg-slate-300" />
-            Seu pai ({100 - percentualSeu}%)
+            {nomeSocio} ({100 - percentualSeu}%)
           </span>
           <ValorAnimado centavos={parteDoSocioCentavos} className="text-lg" />
         </div>

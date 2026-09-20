@@ -1,12 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { CardConfiguracoes } from '@/components/CardConfiguracoes'
 import { ImportarCsv } from '@/components/ImportarCsv'
 import { Navegacao } from '@/components/Navegacao'
-import type { Categoria } from '@/lib/tipos'
+import type { Categoria, Configuracoes } from '@/lib/tipos'
 
 export default function Ajustes() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [configuracoes, setConfiguracoes] = useState<Configuracoes | null>(null)
   const [nome, setNome] = useState('')
   const [erro, setErro] = useState<string | null>(null)
 
@@ -15,7 +17,12 @@ export default function Ajustes() {
     try {
       const resposta = await fetch('/api/mes')
       if (!resposta.ok) throw new Error('falhou')
-      setCategorias(((await resposta.json()) as { categorias: Categoria[] }).categorias)
+      const corpo = (await resposta.json()) as {
+        categorias: Categoria[]
+        configuracoes: Configuracoes
+      }
+      setCategorias(corpo.categorias)
+      setConfiguracoes(corpo.configuracoes)
     } catch {
       setErro('Não foi possível carregar.')
     }
@@ -78,6 +85,10 @@ export default function Ajustes() {
           </button>
         </div>
       </div>
+
+      {configuracoes && (
+        <CardConfiguracoes configuracoes={configuracoes} onSalvo={setConfiguracoes} />
+      )}
 
       <ImportarCsv onImportado={() => void carregar()} />
     </>

@@ -123,3 +123,18 @@ as $$
   do update set tentativas = tentativas_pin.tentativas + 1
   returning tentativas;
 $$;
+
+-- Configurações do negócio (percentual da sociedade, nome do sócio).
+-- Tabela de uma linha só. Ver migracao-003-configuracoes.sql.
+create table if not exists configuracoes (
+  id smallint primary key default 1 check (id = 1),
+  percentual_gestao smallint not null default 12
+    check (percentual_gestao between 0 and 100),
+  nome_socio text not null default 'Sócio'
+);
+
+alter table configuracoes enable row level security;
+
+insert into configuracoes (id, percentual_gestao, nome_socio)
+values (1, 12, 'Meu pai')
+on conflict (id) do nothing;
