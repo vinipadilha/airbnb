@@ -122,12 +122,19 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
 
         return (
           <div key={data} className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between px-1">
+            {/* px-4 casa com o p-4 dos cartões abaixo; o chevron invisível
+                reserva exatamente a mesma largura do visível nas linhas, para
+                o subtotal do dia cair na mesma coluna dos valores. Medir e
+                chutar um padding erra quando a fonte ou o zoom mudam. */}
+            <div className="flex items-baseline justify-between px-4">
               <span className="text-xs text-slate-400">{rotuloDia(data)}</span>
-              {/* pr-6 compensa a largura do chevron, para o subtotal do dia
-                  ficar na mesma coluna dos valores abaixo dele. */}
-              <span className="pr-6 text-[11px] tabular-nums text-slate-400">
-                {totalDoDia >= 0 ? '+' : '−'} {formatCentavos(Math.abs(totalDoDia))}
+              <span className="flex items-center gap-2">
+                <span className="text-[11px] tabular-nums text-slate-400">
+                  {totalDoDia >= 0 ? '+' : '−'} {formatCentavos(Math.abs(totalDoDia))}
+                </span>
+                <span aria-hidden className="invisible">
+                  ›
+                </span>
               </span>
             </div>
 
