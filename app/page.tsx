@@ -146,8 +146,12 @@ export default function Dashboard() {
           {dados && (
             // Uma coluna no celular; a partir de lg, duas — senao o conteudo
             // vira uma faixa estreita no meio de uma tela de 1440px.
+            // min-w-0 nas colunas: item de grid tem min-width:auto e se recusa
+            // a encolher abaixo do conteudo minimo. Sem isso, uma descricao
+            // longa no extrato empurrava a coluna para 397px dentro de uma
+            // grade de 339px, e o celular ganhava rolagem horizontal.
             <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-              <div className="flex flex-col gap-6">
+              <div className="flex min-w-0 flex-col gap-6">
                 <CartoesTotais
                   totais={dados.totais}
                   saldoTotalCentavos={dados.saldoTotalCentavos}
@@ -174,7 +178,7 @@ export default function Dashboard() {
                 <CalendarioMes dias={dados.dias} ocupacao={dados.ocupacao} />
                 */}
               </div>
-              <div className="flex flex-col gap-6">
+              <div className="flex min-w-0 flex-col gap-6">
                 <Extrato
                   lancamentos={dados.lancamentos}
                   categorias={dados.categorias}
