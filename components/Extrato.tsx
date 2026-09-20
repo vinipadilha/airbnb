@@ -124,11 +124,9 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
           <div key={data} className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between px-1">
               <span className="text-xs text-slate-400">{rotuloDia(data)}</span>
-              <span
-                className={`text-[11px] tabular-nums ${
-                  totalDoDia < 0 ? 'text-slate-400' : 'text-slate-400'
-                }`}
-              >
+              {/* pr-6 compensa a largura do chevron, para o subtotal do dia
+                  ficar na mesma coluna dos valores abaixo dele. */}
+              <span className="pr-6 text-[11px] tabular-nums text-slate-400">
                 {totalDoDia >= 0 ? '+' : '−'} {formatCentavos(Math.abs(totalDoDia))}
               </span>
             </div>
@@ -165,8 +163,11 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                             </span>
                           </span>
                         </span>
-                        <span className="shrink-0 text-sm tabular-nums text-red-600">
-                          − {formatCentavos(item.totalCentavos)}
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="text-sm tabular-nums text-red-600">
+                            − {formatCentavos(item.totalCentavos)}
+                          </span>
+                          <span className="text-slate-300">›</span>
                         </span>
                       </button>
 
@@ -188,8 +189,10 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                                 <span className="min-w-0 truncate pl-4 text-xs text-slate-600">
                                   {l.descricao || '(sem descrição)'}
                                 </span>
-                                <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums text-slate-500">
-                                  {formatCentavos(l.valorCentavos)}
+                                <span className="flex shrink-0 items-center gap-2">
+                                  <span className="text-xs tabular-nums text-slate-500">
+                                    {formatCentavos(l.valorCentavos)}
+                                  </span>
                                   <span className="text-slate-300">›</span>
                                 </span>
                               </button>
@@ -228,24 +231,28 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                         </span>
                       </span>
                     </span>
-                    <span className="flex shrink-0 flex-col items-end">
-                      <span
-                        className={`text-sm tabular-nums ${
-                          l.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
-                        }`}
-                      >
-                        {l.tipo === 'entrada' ? '+' : '−'}{' '}
-                        {formatCentavos(valorNoMes(l, competencia))}
-                      </span>
-                      {parcial(l) && (
-                        <span className="text-[11px] tabular-nums text-slate-400">
-                          de {formatCentavos(l.valorCentavos)}
+                    {/* Valor e chevron precisam ser UM filho só. Com três
+                        filhos, o justify-between distribui o espaço entre eles
+                        e o valor para no meio da linha em vez de encostar na
+                        direita — cada linha alinhava num lugar diferente. */}
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="flex flex-col items-end">
+                        <span
+                          className={`text-sm tabular-nums ${
+                            l.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
+                          }`}
+                        >
+                          {l.tipo === 'entrada' ? '+' : '−'}{' '}
+                          {formatCentavos(valorNoMes(l, competencia))}
                         </span>
-                      )}
+                        {parcial(l) && (
+                          <span className="text-[11px] tabular-nums text-slate-400">
+                            de {formatCentavos(l.valorCentavos)}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-slate-300">›</span>
                     </span>
-                    {/* Sinaliza que a linha abre para editar. Sem isso o item
-                        parece só um texto e ninguém descobre que dá para tocar. */}
-                    <span className="shrink-0 pl-2 text-slate-300">›</span>
                   </motion.button>
                 )
               })}
