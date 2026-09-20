@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
 import { CardPendencias } from '@/components/CardPendencias'
+import { CardRateio } from '@/components/CardRateio'
 import { CartoesTotais } from '@/components/CartoesTotais'
 import { Extrato } from '@/components/Extrato'
 import { GraficoCategorias } from '@/components/GraficoCategorias'
@@ -11,6 +12,7 @@ import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
 import { competenciaAtual } from '@/lib/competencia'
 import type { DiaDoMes, Ocupacao } from '@/lib/calendario'
+import type { Rateio } from '@/lib/rateio'
 import type { Categoria, GastoFixo, Lancamento } from '@/lib/tipos'
 import type { TotalCategoria, TotaisMes } from '@/lib/totais'
 
@@ -21,6 +23,8 @@ type DadosMes = {
   ocupacao: Ocupacao
   diariaMediaCentavos: number
   totais: TotaisMes
+  rateio: Rateio
+  percentualSeu: number
   saldoTotalCentavos: number
   porCategoria: TotalCategoria[]
   categorias: Categoria[]
@@ -141,6 +145,7 @@ export default function Dashboard() {
                   totais={dados.totais}
                   saldoTotalCentavos={dados.saldoTotalCentavos}
                 />
+                <CardRateio rateio={dados.rateio} percentualSeu={dados.percentualSeu} />
                 <GraficoCategorias
                   porCategoria={dados.porCategoria}
                   categorias={dados.categorias}

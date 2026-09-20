@@ -17,7 +17,12 @@ export const metadata: Metadata = {
   description: "Controle financeiro do studio",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Tipo explícito em vez do LayoutProps gerado pelo Next: aquele só existe
+// dentro de .next/types, então `tsc --noEmit` quebrava sempre que se rodava
+// typecheck antes de um build.
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="pt-BR"

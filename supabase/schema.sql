@@ -5,7 +5,10 @@ create table if not exists categorias (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
   cor text not null default '#94a3b8',
-  arquivada boolean not null default false
+  arquivada boolean not null default false,
+  -- Falso só na categoria de repasse ao sócio: pagar o sócio não é custo de
+  -- operação, é quitação da parte dele. Ver migracao-002-rateio.sql.
+  entra_no_rateio boolean not null default true
 );
 
 create table if not exists lancamentos (
@@ -79,14 +82,15 @@ alter table gastos_fixos_lancados enable row level security;
 alter table tentativas_pin enable row level security;
 
 -- Seed das categorias.
-insert into categorias (nome, cor)
+insert into categorias (nome, cor, entra_no_rateio)
 select * from (values
-  ('Limpeza',             '#38bdf8'),
-  ('Manutenção',          '#fb923c'),
-  ('Compras / utensílios','#a78bfa'),
-  ('Contas fixas',        '#34d399'),
-  ('Outros',              '#94a3b8')
-) as v(nome, cor)
+  ('Limpeza',             '#38bdf8', true),
+  ('Manutenção',          '#fb923c', true),
+  ('Compras / utensílios','#a78bfa', true),
+  ('Contas fixas',        '#34d399', true),
+  ('Outros',              '#94a3b8', true),
+  ('Repasse ao sócio',    '#64748b', false)
+) as v(nome, cor, entra_no_rateio)
 where not exists (select 1 from categorias);
 
 -- Seed dos gastos fixos. competencia_inicial no fuso do usuário, não em UTC.

@@ -1,6 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useState } from 'react'
 import { noitesDe, noitesNoMes, receitaNoMes } from '@/lib/calendario'
 import { formatCentavos } from '@/lib/dinheiro'
 import type { Categoria, Lancamento } from '@/lib/tipos'
@@ -12,26 +13,65 @@ type Props = {
   onEditar: (lancamento: Lancamento) => void
 }
 
+/** Quantos itens na mesma categoria e no mesmo dia justificam agrupar. */
+const MINIMO_PARA_AGRUPAR = 3
+
 /**
  * Quanto deste lançamento pertence ao mês exibido.
  *
- * Uma reserva que atravessa a virada do mês aparece nos dois meses, e mostrar
- * o valor cheio nos dois faria a soma da lista não bater com o total do card —
- * o usuário somaria R$ 3.683 numa tela que anuncia R$ 3.241.
+ * Uma reserva que atravessa a virada do mês aparece nos dois meses; mostrar o
+ * valor cheio nos dois faria a soma da lista não bater com o total do card.
  */
 function valorNoMes(l: Lancamento, competencia: string): number {
   return l.tipo === 'entrada' ? receitaNoMes(l, competencia) : l.valorCentavos
 }
 
-function agruparPorDia(lancamentos: Lancamento[]): [string, Lancamento[]][] {
-  const grupos = new Map<string, Lancamento[]>()
-  for (const l of lancamentos) {
-    const lista = grupos.get(l.data) ?? []
-    lista.push(l)
-    grupos.set(l.data, lista)
+type Grupo = {
+  chave: string
+  categoriaId: string | null
+  itens: Lancamento[]
+  totalCentavos: number
+}
+
+/**
+ * Agrupa saídas do mesmo dia e da mesma categoria quando são muitas.
+ *
+ * Uma compra de mercado com doze itens não deve ocupar doze linhas do mesmo
+ * peso visual que a conta de internet: a lista fica longa e o mês deixa de ser
+ * legível de relance. Itens soltos continuam soltos.
+ */
+function agrupar(doDia: Lancamento[]): (Lancamento | Grupo)[] {
+  const porCategoria = new Map<string, Lancamento[]>()
+  const soltos: Lancamento[] = []
+
+  for (const l of doDia) {
+    if (l.tipo !== 'saida') {
+      soltos.push(l)
+      continue
+    }
+    const chave = l.categoriaId ?? 'sem-categoria'
+    porCategoria.set(chave, [...(porCategoria.get(chave) ?? []), l])
   }
-  // Mais recente primeiro.
-  return [...grupos.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+
+  const saida: (Lancamento | Grupo)[] = [...soltos]
+
+  for (const [chave, itens] of porCategoria) {
+    if (itens.length < MINIMO_PARA_AGRUPAR) {
+      saida.push(...itens)
+      continue
+    }
+    saida.push({
+      chave: `${chave}-${itens[0].data}`,
+      categoriaId: itens[0].categoriaId,
+      itens,
+      totalCentavos: itens.reduce((t, i) => t + i.valorCentavos, 0),
+    })
+  }
+  return saida
+}
+
+function ehGrupo(item: Lancamento | Grupo): item is Grupo {
+  return 'itens' in item
 }
 
 function rotuloDia(data: string): string {
@@ -40,6 +80,8 @@ function rotuloDia(data: string): string {
 }
 
 export function Extrato({ lancamentos, categorias, competencia, onEditar }: Props) {
+  const [abertos, setAbertos] = useState<Set<string>>(new Set())
+
   if (lancamentos.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-10 text-center shadow-sm">
@@ -51,55 +93,162 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
 
   const nomeCategoria = (id: string | null) =>
     categorias.find((c) => c.id === id)?.nome ?? 'Sem categoria'
+  const corCategoria = (id: string | null) =>
+    categorias.find((c) => c.id === id)?.cor ?? '#cbd5e1'
 
-  /** Reserva que só em parte pertence a este mês. */
   const parcial = (l: Lancamento) =>
     l.tipo === 'entrada' && noitesDe(l) > 0 && noitesNoMes(l, competencia) < noitesDe(l)
+
+  const porDia = new Map<string, Lancamento[]>()
+  for (const l of lancamentos) porDia.set(l.data, [...(porDia.get(l.data) ?? []), l])
+  const dias = [...porDia.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+
+  function alternar(chave: string) {
+    const novo = new Set(abertos)
+    if (novo.has(chave)) novo.delete(chave)
+    else novo.add(chave)
+    setAbertos(novo)
+  }
 
   let indice = 0
 
   return (
-    <div className="flex flex-col gap-6">
-      {agruparPorDia(lancamentos).map(([data, doDia]) => (
-        <div key={data} className="flex flex-col gap-2">
-          <span className="px-1 text-xs text-slate-400">{rotuloDia(data)}</span>
-          <div className="flex flex-col gap-2">
-            {doDia.map((l) => (
-              <motion.button
-                key={l.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: Math.min(indice++ * 0.03, 0.4) }}
-                onClick={() => onEditar(l)}
-                className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"
+    <div className="flex flex-col gap-5">
+      {dias.map(([data, doDia]) => {
+        const totalDoDia = doDia.reduce(
+          (t, l) => t + (l.tipo === 'entrada' ? valorNoMes(l, competencia) : -l.valorCentavos),
+          0,
+        )
+
+        return (
+          <div key={data} className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between px-1">
+              <span className="text-xs text-slate-400">{rotuloDia(data)}</span>
+              <span
+                className={`text-[11px] tabular-nums ${
+                  totalDoDia < 0 ? 'text-slate-400' : 'text-slate-400'
+                }`}
               >
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-sm">{l.descricao || '(sem descrição)'}</span>
-                  <span className="text-xs text-slate-400">
-                    {l.tipo === 'entrada' ? l.origem : nomeCategoria(l.categoriaId)}
-                    {parcial(l) &&
-                      ` · ${noitesNoMes(l, competencia)} de ${noitesDe(l)} noites`}
-                  </span>
-                </span>
-                <span className="flex shrink-0 flex-col items-end">
-                  <span
-                    className={`text-sm tabular-nums ${
-                      l.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
-                    }`}
+                {totalDoDia >= 0 ? '+' : '−'} {formatCentavos(Math.abs(totalDoDia))}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              {agrupar(doDia).map((item) => {
+                const delay = Math.min(indice++ * 0.03, 0.4)
+
+                if (ehGrupo(item)) {
+                  const aberto = abertos.has(item.chave)
+                  return (
+                    <motion.div
+                      key={item.chave}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay }}
+                      className="overflow-hidden rounded-2xl bg-white shadow-sm"
+                    >
+                      <button
+                        onClick={() => alternar(item.chave)}
+                        className="flex w-full items-center justify-between p-4 text-left"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: corCategoria(item.categoriaId) }}
+                          />
+                          <span className="flex min-w-0 flex-col">
+                            <span className="truncate text-sm">
+                              {nomeCategoria(item.categoriaId)}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {item.itens.length} itens · toque para ver
+                            </span>
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-sm tabular-nums text-red-600">
+                          − {formatCentavos(item.totalCentavos)}
+                        </span>
+                      </button>
+
+                      <AnimatePresence initial={false}>
+                        {aberto && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex flex-col border-t border-slate-100"
+                          >
+                            {item.itens.map((l) => (
+                              <button
+                                key={l.id}
+                                onClick={() => onEditar(l)}
+                                className="flex items-center justify-between px-4 py-2.5 text-left hover:bg-slate-50"
+                              >
+                                <span className="min-w-0 truncate pl-4 text-xs text-slate-600">
+                                  {l.descricao || '(sem descrição)'}
+                                </span>
+                                <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                                  {formatCentavos(l.valorCentavos)}
+                                </span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )
+                }
+
+                const l = item
+                return (
+                  <motion.button
+                    key={l.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay }}
+                    onClick={() => onEditar(l)}
+                    className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"
                   >
-                    {l.tipo === 'entrada' ? '+' : '−'} {formatCentavos(valorNoMes(l, competencia))}
-                  </span>
-                  {parcial(l) && (
-                    <span className="text-[11px] tabular-nums text-slate-400">
-                      de {formatCentavos(l.valorCentavos)}
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      {l.tipo === 'saida' && (
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: corCategoria(l.categoriaId) }}
+                        />
+                      )}
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm">
+                          {l.descricao || '(sem descrição)'}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {l.tipo === 'entrada' ? l.origem : nomeCategoria(l.categoriaId)}
+                          {parcial(l) && ` · ${noitesNoMes(l, competencia)} de ${noitesDe(l)} noites`}
+                        </span>
+                      </span>
                     </span>
-                  )}
-                </span>
-              </motion.button>
-            ))}
+                    <span className="flex shrink-0 flex-col items-end">
+                      <span
+                        className={`text-sm tabular-nums ${
+                          l.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
+                        }`}
+                      >
+                        {l.tipo === 'entrada' ? '+' : '−'}{' '}
+                        {formatCentavos(valorNoMes(l, competencia))}
+                      </span>
+                      {parcial(l) && (
+                        <span className="text-[11px] tabular-nums text-slate-400">
+                          de {formatCentavos(l.valorCentavos)}
+                        </span>
+                      )}
+                    </span>
+                  </motion.button>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

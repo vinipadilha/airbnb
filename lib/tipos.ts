@@ -5,6 +5,12 @@ export type Categoria = {
   nome: string
   cor: string
   arquivada: boolean
+  /**
+   * Se o gasto desta categoria desconta do resultado antes do rateio.
+   * Falso na categoria de repasse ao sócio: pagar o sócio não é custo de
+   * operação, é quitação da parte dele.
+   */
+  entraNoRateio: boolean
 }
 
 export type Lancamento = {

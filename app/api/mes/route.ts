@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { diariaMediaDoMes, diasDoMes, noitesNoMes, ocupacaoDoMes } from '@/lib/calendario'
 import { competenciaAtual, competenciaDe } from '@/lib/competencia'
 import { paraLancamento, type LinhaLancamento } from '@/lib/mapeamento'
+import { calcularRateio } from '@/lib/rateio'
 import { clienteServidor } from '@/lib/supabase'
 import { saidasPorCategoria, saldoAcumulado, totaisDoMes } from '@/lib/totais'
 
@@ -29,6 +30,18 @@ export async function GET(request: Request) {
 
   const todos = (lancamentosRes.data as LinhaLancamento[]).map(paraLancamento)
 
+  const categorias = (categoriasRes.data as Record<string, unknown>[]).map((c) => ({
+    id: c.id as string,
+    nome: c.nome as string,
+    cor: c.cor as string,
+    arquivada: c.arquivada as boolean,
+    // Instalação que ainda não rodou a migração 002 não tem a coluna; tratar
+    // como true mantém o app funcionando, só sem separar o repasse.
+    entraNoRateio: c.entra_no_rateio !== false,
+  }))
+
+  const percentualSeu = Number(process.env.PERCENTUAL_GESTAO ?? 12)
+
   // Uma reserva pertence ao mês se alguma das suas noites cai nele — não só
   // se o check-in caiu. É o que faz a estadia longa aparecer nos meses do meio.
   const doMes = todos.filter(
@@ -44,6 +57,8 @@ export async function GET(request: Request) {
     totais: totaisDoMes(todos, competencia),
     saldoTotalCentavos: saldoAcumulado(todos),
     porCategoria: saidasPorCategoria(todos, competencia),
-    categorias: categoriasRes.data,
+    categorias,
+    rateio: calcularRateio(todos, categorias, competencia, percentualSeu),
+    percentualSeu,
   })
 }
