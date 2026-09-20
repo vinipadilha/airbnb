@@ -32,6 +32,13 @@ export function CartoesTotais({ totais, saldoTotalCentavos }: Props) {
           className={`text-3xl font-medium ${totais.saldo < 0 ? 'text-red-600' : 'text-slate-900'}`}
         />
         <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
+          {/* Só faz sentido mostrar o estimado quando ele difere do real —
+              sem reserva programada os dois são o mesmo número. */}
+          {totais.entradasProgramadas > 0 && (
+            <span className="text-slate-500">
+              estimado {formatCentavos(totais.saldoEstimado)}
+            </span>
+          )}
           {margem !== null && <span>margem {margem}%</span>}
           <span>acumulado {formatCentavos(saldoTotalCentavos)}</span>
         </span>
@@ -42,8 +49,11 @@ export function CartoesTotais({ totais, saldoTotalCentavos }: Props) {
           <span className="text-xs text-slate-500">Entradas</span>
           <ValorAnimado centavos={totais.entradas} className="text-lg text-emerald-600" />
           {totais.entradasProgramadas > 0 && (
-            <span className="text-[11px] tabular-nums text-slate-400">
-              programado {formatCentavos(totais.entradasProgramadas)}
+            <span className="flex flex-col text-[11px] tabular-nums text-slate-400">
+              <span>programado {formatCentavos(totais.entradasProgramadas)}</span>
+              <span className="text-slate-500">
+                estimado {formatCentavos(totais.entradasEstimadas)}
+              </span>
             </span>
           )}
         </div>

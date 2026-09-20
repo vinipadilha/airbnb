@@ -9,6 +9,10 @@ export type TotaisMes = {
   saidas: number
   /** entradas recebidas − saídas. Programado não entra. */
   saldo: number
+  /** recebido + programado: o que o mês fatura se tudo cair. */
+  entradasEstimadas: number
+  /** estimadas − saídas: como o mês fecha se tudo cair. */
+  saldoEstimado: number
 }
 
 export type TotalCategoria = {
@@ -45,7 +49,16 @@ export function totaisDoMes(lancamentos: Lancamento[], competencia: string): Tot
       saidas += l.valorCentavos
     }
   }
-  return { entradas, entradasProgramadas, saidas, saldo: entradas - saidas }
+  const entradasEstimadas = entradas + entradasProgramadas
+
+  return {
+    entradas,
+    entradasProgramadas,
+    saidas,
+    saldo: entradas - saidas,
+    entradasEstimadas,
+    saldoEstimado: entradasEstimadas - saidas,
+  }
 }
 
 /** Saldo do histórico inteiro. Entrada programada não conta: não é dinheiro. */

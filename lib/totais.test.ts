@@ -31,6 +31,8 @@ test('totaisDoMes soma só o mês pedido', () => {
     entradasProgramadas: 0,
     saidas: 21800,
     saldo: 58200,
+    entradasEstimadas: 80000,
+    saldoEstimado: 58200,
   })
 })
 
@@ -40,6 +42,8 @@ test('totaisDoMes devolve zeros em mês sem lançamento', () => {
     entradasProgramadas: 0,
     saidas: 0,
     saldo: 0,
+    entradasEstimadas: 0,
+    saldoEstimado: 0,
   })
 })
 
@@ -71,6 +75,25 @@ test('entrada programada fica fora das entradas e do saldo', () => {
   assert.equal(r.entradas, 80000)
   assert.equal(r.entradasProgramadas, 70000)
   assert.equal(r.saldo, 58200)
+})
+
+test('estimado soma o programado ao recebido', () => {
+  const programada = lanc({
+    id: 'P', tipo: 'entrada', data: '2026-09-25', valorCentavos: 70000, origem: 'Airbnb',
+  })
+  programada.recebido = false
+  const r = totaisDoMes([...base, programada], '2026-09')
+  assert.equal(r.entradas, 80000)
+  assert.equal(r.entradasEstimadas, 150000)
+  // O saldo real desconta os gastos do que entrou; o estimado, do que vai entrar.
+  assert.equal(r.saldo, 58200)
+  assert.equal(r.saldoEstimado, 128200)
+})
+
+test('sem programado, estimado e real são iguais', () => {
+  const r = totaisDoMes(base, '2026-09')
+  assert.equal(r.entradasEstimadas, r.entradas)
+  assert.equal(r.saldoEstimado, r.saldo)
 })
 
 test('saldoAcumulado ignora o que ainda não foi recebido', () => {
