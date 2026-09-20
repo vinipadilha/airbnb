@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarioMes } from '@/components/CalendarioMes'
 import { CardPendencias } from '@/components/CardPendencias'
 import { CartoesTotais } from '@/components/CartoesTotais'
 import { Extrato } from '@/components/Extrato'
@@ -141,15 +140,23 @@ export default function Dashboard() {
                 <CartoesTotais
                   totais={dados.totais}
                   saldoTotalCentavos={dados.saldoTotalCentavos}
-                  diariaMediaCentavos={dados.diariaMediaCentavos}
                 />
-                <CalendarioMes dias={dados.dias} ocupacao={dados.ocupacao} />
-              </div>
-              <div className="flex flex-col gap-6">
                 <GraficoCategorias
                   porCategoria={dados.porCategoria}
                   categorias={dados.categorias}
                 />
+
+                {/* Calendário de ocupação — desligado a pedido do dono em
+                    2026-09-20, que preferiu manter o app como controle de
+                    entradas e saídas. Para religar: descomente as duas linhas
+                    abaixo e o import de CalendarioMes no topo. O endpoint
+                    /api/mes já devolve `dias` e `ocupacao`, e o componente
+                    continua em components/CalendarioMes.tsx, testado.
+
+                <CalendarioMes dias={dados.dias} ocupacao={dados.ocupacao} />
+                */}
+              </div>
+              <div className="flex flex-col gap-6">
                 <Extrato
                   lancamentos={dados.lancamentos}
                   categorias={dados.categorias}
