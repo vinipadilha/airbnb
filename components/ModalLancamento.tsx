@@ -255,7 +255,10 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
 
             {erro && <p className="text-sm text-red-600">{erro}</p>}
 
-            <div className="flex gap-3">
+            {/* Grudado no rodapé do modal: com o calendário dentro, o
+                formulário passa da altura do celular e o Salvar nascia fora da
+                vista, só alcançável depois de rolar. */}
+            <div className="sticky bottom-0 -mx-6 -mb-6 flex gap-3 border-t border-slate-100 bg-white px-6 pb-6 pt-4">
               {lancamento && (
                 <button onClick={excluir} className="rounded-xl px-4 py-3 text-sm text-red-600">
                   Excluir

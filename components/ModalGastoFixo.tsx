@@ -99,7 +99,7 @@ export function ModalGastoFixo({ aberto, gastoFixo, categorias, onFechar, onSalv
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full max-w-md flex-col gap-4 rounded-t-3xl bg-white p-6 sm:rounded-3xl"
+            className="flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-6 sm:max-h-[90dvh] sm:rounded-3xl"
           >
             <span className="text-sm font-medium">
               {gastoFixo ? 'Editar gasto fixo' : 'Novo gasto fixo'}
@@ -141,7 +141,7 @@ export function ModalGastoFixo({ aberto, gastoFixo, categorias, onFechar, onSalv
 
             {erro && <p className="text-sm text-red-600">{erro}</p>}
 
-            <div className="flex gap-3">
+            <div className="sticky bottom-0 -mx-6 -mb-6 flex gap-3 border-t border-slate-100 bg-white px-6 pb-6 pt-4">
               {gastoFixo && (
                 <button onClick={remover} className="rounded-xl px-4 py-3 text-sm text-red-600">
                   Excluir
