@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CardPendencias } from '@/components/CardPendencias'
 import { CardRateio } from '@/components/CardRateio'
 import { CartoesTotais } from '@/components/CartoesTotais'
@@ -10,7 +10,7 @@ import { GraficoCategorias } from '@/components/GraficoCategorias'
 import { ModalLancamento } from '@/components/ModalLancamento'
 import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
-import { competenciaAtual } from '@/lib/competencia'
+import { competenciaAtual, deslocarCompetencia } from '@/lib/competencia'
 import type { DiaDoMes, Ocupacao } from '@/lib/calendario'
 import type { Rateio } from '@/lib/rateio'
 import type {
@@ -42,6 +42,14 @@ export default function Dashboard() {
   const [direcao, setDirecao] = useState<1 | -1>(1)
   const [dados, setDados] = useState<DadosMes | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  /**
+   * Meses já buscados, por competência.
+   *
+   * Sem cache, trocar de mês disparava a animação na hora e os dados só
+   * chegavam ~300ms depois: via-se o mês novo com os números do antigo e
+   * depois a troca — a "piscada". Com o mês em memória, a troca é síncrona.
+   */
+  const cache = useRef(new Map<string, DadosMes>())
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<Lancamento | null>(null)
   // Incrementa a cada abertura. Ver a explicação na key do ModalLancamento.
@@ -49,17 +57,57 @@ export default function Dashboard() {
   const [pendentes, setPendentes] = useState<GastoFixo[]>([])
   const [falhasPendencias, setFalhasPendencias] = useState<string[]>([])
 
-  const carregar = useCallback(async () => {
-    setErro(null)
+  /** Busca um mês e guarda no cache. Devolve null se falhar. */
+  const buscarMes = useCallback(async (alvo: string): Promise<DadosMes | null> => {
     try {
-      const resposta = await fetch(`/api/mes?competencia=${competencia}`)
-      if (!resposta.ok) throw new Error('resposta não ok')
-      setDados((await resposta.json()) as DadosMes)
+      const resposta = await fetch(`/api/mes?competencia=${alvo}`)
+      if (!resposta.ok) return null
+      const corpo = (await resposta.json()) as DadosMes
+      cache.current.set(alvo, corpo)
+      return corpo
     } catch {
-      // Spec §10: nunca tela branca. O que já estava carregado continua na tela.
-      setErro('Não foi possível carregar. Verifique a conexão.')
+      return null
     }
-  }, [competencia])
+  }, [])
+
+  /** Deixa os meses vizinhos prontos, para a próxima seta não esperar rede. */
+  const prefetchVizinhos = useCallback(
+    (base: string) => {
+      for (const vizinho of [deslocarCompetencia(base, -1), deslocarCompetencia(base, 1)]) {
+        if (!cache.current.has(vizinho)) void buscarMes(vizinho)
+      }
+    },
+    [buscarMes],
+  )
+
+  const carregar = useCallback(
+    async (opcoes?: { revalidar?: boolean }) => {
+      setErro(null)
+
+      const emCache = cache.current.get(competencia)
+      if (emCache && !opcoes?.revalidar) {
+        setDados(emCache)
+        prefetchVizinhos(competencia)
+        return
+      }
+
+      const novo = await buscarMes(competencia)
+      if (novo === null) {
+        // Nunca tela branca: o que já estava carregado continua valendo.
+        setErro('Não foi possível carregar. Verifique a conexão.')
+        return
+      }
+      setDados(novo)
+      prefetchVizinhos(competencia)
+    },
+    [competencia, buscarMes, prefetchVizinhos],
+  )
+
+  /** Depois de gravar algo, o cache inteiro fica velho: totais e saldo mudam. */
+  const recarregarTudo = useCallback(async () => {
+    cache.current.clear()
+    await carregar({ revalidar: true })
+  }, [carregar])
 
   const carregarPendencias = useCallback(async () => {
     try {
@@ -123,12 +171,16 @@ export default function Dashboard() {
         </>
       )}
 
-      <SeletorMes competencia={competencia} onMudar={mudarMes} />
+      <SeletorMes
+        competencia={competencia}
+        carregando={dados !== null && dados.competencia !== competencia}
+        onMudar={mudarMes}
+      />
 
       {erro && (
         <div className="flex items-center justify-between rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
           <span>{erro}</span>
-          <button onClick={() => void carregar()} className="underline">
+          <button onClick={() => void carregar({ revalidar: true })} className="underline">
             Tentar de novo
           </button>
         </div>
@@ -136,7 +188,11 @@ export default function Dashboard() {
 
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          key={competencia}
+          // A animação dispara pela competência DOS DADOS, não pela pedida:
+          // num mês ainda não carregado, a tela fica parada até a resposta
+          // chegar e então desliza já com os números certos. Animar pela
+          // pedida mostraria o mês novo com os números do antigo.
+          key={dados?.competencia ?? competencia}
           initial={{ opacity: 0, x: direcao * 24 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: direcao * -24 }}
@@ -161,7 +217,7 @@ export default function Dashboard() {
                   configuracoes={dados.configuracoes}
                   repasses={dados.repasses}
                   competencia={dados.competencia}
-                  onMudou={() => void carregar()}
+                  onMudou={() => void recarregarTudo()}
                 />
                 <GraficoCategorias
                   porCategoria={dados.porCategoria}
@@ -208,7 +264,7 @@ export default function Dashboard() {
         categorias={dados?.categorias ?? []}
         lancamento={editando}
         onFechar={() => setModalAberto(false)}
-        onSalvo={() => void carregar()}
+        onSalvo={() => void recarregarTudo()}
       />
     </>
   )
