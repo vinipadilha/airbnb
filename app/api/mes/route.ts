@@ -17,9 +17,13 @@ export async function GET(request: Request) {
 
   const supabase = clienteServidor()
 
-  const [lancamentosRes, categoriasRes] = await Promise.all([
+  const [lancamentosRes, categoriasRes, repassesRes] = await Promise.all([
     supabase.from('lancamentos').select('*').order('data', { ascending: false }).order('criado_em', { ascending: false }),
     supabase.from('categorias').select('*').order('nome'),
+    supabase
+      .from('repasses')
+      .select('id, data, valor_centavos, observacao')
+      .order('data', { ascending: false }),
   ])
 
   if (lancamentosRes.error || categoriasRes.error) {
@@ -43,6 +47,17 @@ export async function GET(request: Request) {
 
   const config = await carregarConfiguracoes()
 
+  // Sem a migração 004 a tabela de repasses não existe: tratar como vazia
+  // mantém o dashboard de pé em vez de derrubar a tela inteira.
+  const repasses = (repassesRes.error ? [] : repassesRes.data).map(
+    (r: Record<string, unknown>) => ({
+      id: r.id as string,
+      data: r.data as string,
+      valorCentavos: r.valor_centavos as number,
+      observacao: r.observacao as string,
+    }),
+  )
+
   // Uma reserva pertence ao mês se alguma das suas noites cai nele — não só
   // se o check-in caiu. É o que faz a estadia longa aparecer nos meses do meio.
   const doMes = todos.filter(
@@ -59,7 +74,14 @@ export async function GET(request: Request) {
     saldoTotalCentavos: saldoAcumulado(todos),
     porCategoria: saidasPorCategoria(todos, competencia),
     categorias,
-    rateio: calcularRateio(todos, categorias, competencia, config.percentualGestao),
+    repasses,
+    rateio: calcularRateio(
+      todos,
+      categorias,
+      repasses,
+      competencia,
+      config.percentualGestao,
+    ),
     configuracoes: config,
   })
 }

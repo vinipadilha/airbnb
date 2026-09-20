@@ -52,3 +52,11 @@ export type Configuracoes = {
   percentualGestao: number
   nomeSocio: string
 }
+
+export type Repasse = {
+  id: string
+  /** YYYY-MM-DD */
+  data: string
+  valorCentavos: number
+  observacao: string
+}

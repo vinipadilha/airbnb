@@ -1,6 +1,6 @@
 import { receitaNoMes } from './calendario'
 import { competenciaDe } from './competencia'
-import type { Categoria, Lancamento } from './tipos'
+import type { Categoria, Lancamento, Repasse } from './tipos'
 
 export type Rateio = {
   entradasCentavos: number
@@ -9,7 +9,7 @@ export type Rateio = {
   liquidoCentavos: number
   suaParteCentavos: number
   parteDoSocioCentavos: number
-  /** Quanto já saiu em repasses neste mês. */
+  /** Quanto já foi repassado ao sócio neste mês. */
   repassadoCentavos: number
   /** Quanto ainda falta repassar. Negativo significa que você adiantou. */
   aRepassarCentavos: number
@@ -18,15 +18,17 @@ export type Rateio = {
 /**
  * Divide o resultado do mês entre você e o sócio.
  *
- * O repasse ao sócio **não** entra como gasto operacional: se entrasse, pagar
- * o sócio diminuiria o líquido, que diminuiria o quanto se deve ao sócio, que
- * mudaria de novo o quanto pagar — a conta nunca fecharia. Por isso a
- * categoria de repasse é marcada com `entraNoRateio = false`, e o que se paga
- * por ela é abatido da dívida, não do resultado.
+ * Repasse tem tabela própria, separada de entradas e saídas, por dois motivos.
+ * O primeiro é conceitual: mandar o Pix ao sócio não é custo de operar o
+ * studio, é acerto da parte dele. O segundo é aritmético: se o repasse
+ * contasse como gasto, pagar o sócio diminuiria o líquido, que diminuiria o
+ * quanto se deve a ele, que mudaria de novo o valor a pagar — a conta nunca
+ * fecharia.
  */
 export function calcularRateio(
   lancamentos: Lancamento[],
   categorias: Categoria[],
+  repasses: Repasse[],
   competencia: string,
   percentualSeu: number,
 ): Rateio {
@@ -36,7 +38,6 @@ export function calcularRateio(
 
   let entradasCentavos = 0
   let gastosCentavos = 0
-  let repassadoCentavos = 0
 
   for (const l of lancamentos) {
     if (l.tipo === 'entrada') {
@@ -45,14 +46,17 @@ export function calcularRateio(
     }
     if (competenciaDe(l.data) !== competencia) continue
 
+    // Categoria marcada como fora do rateio fica de fora da conta inteira.
     // Categoria que sumiu do cadastro conta como gasto operacional: é o
     // palpite conservador, porque erra para menos no que se deve ao sócio.
-    if (l.categoriaId !== null && foraDoRateio.has(l.categoriaId)) {
-      repassadoCentavos += l.valorCentavos
-    } else {
+    if (l.categoriaId === null || !foraDoRateio.has(l.categoriaId)) {
       gastosCentavos += l.valorCentavos
     }
   }
+
+  const repassadoCentavos = repasses
+    .filter((r) => competenciaDe(r.data) === competencia)
+    .reduce((total, r) => total + r.valorCentavos, 0)
 
   const liquidoCentavos = entradasCentavos - gastosCentavos
 

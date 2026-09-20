@@ -13,7 +13,13 @@ import { SeletorMes } from '@/components/SeletorMes'
 import { competenciaAtual } from '@/lib/competencia'
 import type { DiaDoMes, Ocupacao } from '@/lib/calendario'
 import type { Rateio } from '@/lib/rateio'
-import type { Categoria, Configuracoes, GastoFixo, Lancamento } from '@/lib/tipos'
+import type {
+  Categoria,
+  Configuracoes,
+  GastoFixo,
+  Lancamento,
+  Repasse,
+} from '@/lib/tipos'
 import type { TotalCategoria, TotaisMes } from '@/lib/totais'
 
 type DadosMes = {
@@ -25,6 +31,7 @@ type DadosMes = {
   totais: TotaisMes
   rateio: Rateio
   configuracoes: Configuracoes
+  repasses: Repasse[]
   saldoTotalCentavos: number
   porCategoria: TotalCategoria[]
   categorias: Categoria[]
@@ -145,7 +152,13 @@ export default function Dashboard() {
                   totais={dados.totais}
                   saldoTotalCentavos={dados.saldoTotalCentavos}
                 />
-                <CardRateio rateio={dados.rateio} configuracoes={dados.configuracoes} />
+                <CardRateio
+                  rateio={dados.rateio}
+                  configuracoes={dados.configuracoes}
+                  repasses={dados.repasses}
+                  competencia={dados.competencia}
+                  onMudou={() => void carregar()}
+                />
                 <GraficoCategorias
                   porCategoria={dados.porCategoria}
                   categorias={dados.categorias}
