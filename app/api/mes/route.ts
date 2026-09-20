@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { diariaMediaDoMes, diasDoMes, noitesNoMes, ocupacaoDoMes } from '@/lib/calendario'
 import { competenciaAtual, competenciaDe } from '@/lib/competencia'
 import { paraLancamento, type LinhaLancamento } from '@/lib/mapeamento'
 import { clienteServidor } from '@/lib/supabase'
@@ -28,9 +29,18 @@ export async function GET(request: Request) {
 
   const todos = (lancamentosRes.data as LinhaLancamento[]).map(paraLancamento)
 
+  // Uma reserva pertence ao mês se alguma das suas noites cai nele — não só
+  // se o check-in caiu. É o que faz a estadia longa aparecer nos meses do meio.
+  const doMes = todos.filter(
+    (l) => competenciaDe(l.data) === competencia || noitesNoMes(l, competencia) > 0,
+  )
+
   return NextResponse.json({
     competencia,
-    lancamentos: todos.filter((l) => competenciaDe(l.data) === competencia),
+    lancamentos: doMes,
+    dias: diasDoMes(todos, competencia),
+    ocupacao: ocupacaoDoMes(todos, competencia),
+    diariaMediaCentavos: diariaMediaDoMes(todos, competencia),
     totais: totaisDoMes(todos, competencia),
     saldoTotalCentavos: saldoAcumulado(todos),
     porCategoria: saidasPorCategoria(todos, competencia),

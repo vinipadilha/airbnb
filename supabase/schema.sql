@@ -11,7 +11,12 @@ create table if not exists categorias (
 create table if not exists lancamentos (
   id uuid primary key default gen_random_uuid(),
   tipo text not null check (tipo in ('entrada', 'saida')),
+  -- Em entradas, `data` é o check-in e `data_fim` é o check-out. As noites são
+  -- derivadas da diferença, e receita e ocupação são rateadas pelos meses que
+  -- a estadia atravessa — sem isso, uma reserva longa cai inteira no mês do
+  -- check-in e zera os meses seguintes.
   data date not null,
+  data_fim date,
   valor_centavos integer not null check (valor_centavos > 0),
   descricao text not null default '',
   categoria_id uuid references categorias(id),
@@ -19,23 +24,24 @@ create table if not exists lancamentos (
   -- constraint campos_por_tipo rejeitaria a linha. 'Airbnb' é pré-preenchido
   -- no formulário de entrada, não no banco.
   origem text,
-  noites integer check (noites is null or noites > 0),
   hospedes integer check (hospedes is null or hospedes > 0),
   criado_em timestamptz not null default now(),
   constraint campos_por_tipo check (
     (tipo = 'saida'
       and categoria_id is not null
       and origem is null
-      and noites is null
+      and data_fim is null
       and hospedes is null)
     or
     (tipo = 'entrada'
       and categoria_id is null
-      and origem is not null)
+      and origem is not null
+      and (data_fim is null or data_fim > data))
   )
 );
 
 create index if not exists lancamentos_data_idx on lancamentos (data desc, criado_em desc);
+create index if not exists lancamentos_periodo_idx on lancamentos (data, data_fim);
 
 create table if not exists gastos_fixos (
   id uuid primary key default gen_random_uuid(),

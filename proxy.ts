@@ -3,9 +3,15 @@ import type { NextRequest } from 'next/server'
 import { COOKIE_SESSAO, verificarToken } from '@/lib/sessao'
 
 export async function proxy(request: NextRequest) {
+  const pin = process.env.APP_PIN
   const segredo = process.env.APP_SESSION_SECRET
-  if (!segredo) {
-    return new NextResponse('Servidor mal configurado.', { status: 500 })
+
+  // Tranca opcional: sem APP_PIN no ambiente, o app abre direto. Foi uma
+  // escolha explícita do dono — e publicado sem tranca, quem tiver a URL vê o
+  // faturamento e os gastos. Para ligar de volta, basta definir APP_PIN e
+  // APP_SESSION_SECRET; nada aqui precisa mudar.
+  if (!pin || !segredo) {
+    return NextResponse.next()
   }
 
   const token = request.cookies.get(COOKIE_SESSAO)?.value

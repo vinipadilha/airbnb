@@ -3,7 +3,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { hojeEmSaoPaulo } from '@/lib/competencia'
+import { noitesEntre, somarDias } from '@/lib/calendario'
 import type { Categoria, Lancamento, TipoLancamento } from '@/lib/tipos'
+import { formatCentavos } from '@/lib/dinheiro'
 import { CampoValor } from './CampoValor'
 
 type Props = {
@@ -24,7 +26,9 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
   const [descricao, setDescricao] = useState(lancamento?.descricao ?? '')
   const [categoriaId, setCategoriaId] = useState(lancamento?.categoriaId ?? '')
   const [origem, setOrigem] = useState(lancamento?.origem ?? 'Airbnb')
-  const [noites, setNoites] = useState(lancamento?.noites?.toString() ?? '')
+  const [dataFim, setDataFim] = useState(
+    lancamento?.dataFim ?? somarDias(lancamento?.data ?? hojeEmSaoPaulo(), 1),
+  )
   const [hospedes, setHospedes] = useState(lancamento?.hospedes?.toString() ?? '')
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -40,6 +44,10 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
       setErro('Escolha uma categoria.')
       return
     }
+    if (tipo === 'entrada' && dataFim <= data) {
+      setErro('O check-out precisa ser depois do check-in.')
+      return
+    }
 
     setSalvando(true)
     setErro(null)
@@ -51,7 +59,7 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
       descricao,
       categoriaId: tipo === 'saida' ? categoriaId : null,
       origem: tipo === 'entrada' ? origem : null,
-      noites: tipo === 'entrada' && noites !== '' ? Number(noites) : null,
+      dataFim: tipo === 'entrada' ? dataFim : null,
       hospedes: tipo === 'entrada' && hospedes !== '' ? Number(hospedes) : null,
     }
 
@@ -124,15 +132,53 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
 
             <CampoValor autoFocus valorCentavos={valorCentavos} onChange={setValorCentavos} />
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500">Data</span>
-              <input
-                type="date"
-                value={data}
-                onChange={(e) => setData(e.target.value)}
-                className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
-              />
-            </label>
+            {tipo === 'entrada' ? (
+              <div className="flex items-end gap-3">
+                <label className="flex flex-1 flex-col gap-1">
+                  <span className="text-xs text-slate-500">Check-in</span>
+                  <input
+                    type="date"
+                    value={data}
+                    onChange={(e) => {
+                      setData(e.target.value)
+                      // Empurra o check-out junto, para nunca ficar antes do
+                      // check-in enquanto o usuário mexe nas datas.
+                      if (dataFim <= e.target.value) setDataFim(somarDias(e.target.value, 1))
+                    }}
+                    className="w-full rounded-xl bg-slate-100 px-4 py-3 outline-none"
+                  />
+                </label>
+                <label className="flex flex-1 flex-col gap-1">
+                  <span className="text-xs text-slate-500">Check-out</span>
+                  <input
+                    type="date"
+                    value={dataFim}
+                    min={somarDias(data, 1)}
+                    onChange={(e) => setDataFim(e.target.value)}
+                    className="w-full rounded-xl bg-slate-100 px-4 py-3 outline-none"
+                  />
+                </label>
+              </div>
+            ) : (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-slate-500">Data</span>
+                <input
+                  type="date"
+                  value={data}
+                  onChange={(e) => setData(e.target.value)}
+                  className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
+                />
+              </label>
+            )}
+
+            {tipo === 'entrada' && dataFim > data && (
+              <span className="-mt-2 text-xs text-slate-400">
+                {noitesEntre(data, dataFim)}{' '}
+                {noitesEntre(data, dataFim) === 1 ? 'noite' : 'noites'}
+                {valorCentavos !== null &&
+                  ` · ${formatCentavos(Math.round(valorCentavos / noitesEntre(data, dataFim)))} por noite`}
+              </span>
+            )}
 
             <label className="flex flex-col gap-1">
               <span className="text-xs text-slate-500">Descrição</span>
@@ -168,26 +214,15 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
                     className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
                   />
                 </label>
-                <div className="flex gap-4">
-                  <label className="flex flex-1 flex-col gap-1">
-                    <span className="text-xs text-slate-500">Noites</span>
-                    <input
-                      inputMode="numeric"
-                      value={noites}
-                      onChange={(e) => setNoites(e.target.value)}
-                      className="rounded-xl bg-slate-100 px-4 py-3 tabular-nums outline-none"
-                    />
-                  </label>
-                  <label className="flex flex-1 flex-col gap-1">
-                    <span className="text-xs text-slate-500">Hóspedes</span>
-                    <input
-                      inputMode="numeric"
-                      value={hospedes}
-                      onChange={(e) => setHospedes(e.target.value)}
-                      className="rounded-xl bg-slate-100 px-4 py-3 tabular-nums outline-none"
-                    />
-                  </label>
-                </div>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-500">Hóspedes</span>
+                  <input
+                    inputMode="numeric"
+                    value={hospedes}
+                    onChange={(e) => setHospedes(e.target.value)}
+                    className="rounded-xl bg-slate-100 px-4 py-3 tabular-nums outline-none"
+                  />
+                </label>
               </>
             )}
 

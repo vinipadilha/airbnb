@@ -6,9 +6,9 @@ import type { Lancamento } from './tipos'
 function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' | 'valorCentavos'>): Lancamento {
   return {
     descricao: 'x',
+    dataFim: null,
     categoriaId: null,
     origem: null,
-    noites: null,
     hospedes: null,
     criadoEm: '2026-09-01T00:00:00Z',
     ...p,
@@ -46,6 +46,16 @@ test('totaisDoMes aceita saldo negativo', () => {
     lanc({ id: 'b', tipo: 'saida', data: '2026-09-02', valorCentavos: 3000 }),
   ]
   assert.equal(totaisDoMes(caros, '2026-09').saldo, -2000)
+})
+
+test('totaisDoMes rateia uma reserva que atravessa meses', () => {
+  const longa = lanc({
+    id: 'L', tipo: 'entrada', data: '2026-09-28', valorCentavos: 100000, origem: 'Airbnb',
+  })
+  longa.dataFim = '2026-10-08'
+  // 10 noites a 10.000: 3 em setembro (28, 29, 30) e 7 em outubro.
+  assert.equal(totaisDoMes([longa], '2026-09').entradas, 30000)
+  assert.equal(totaisDoMes([longa], '2026-10').entradas, 70000)
 })
 
 test('saldoAcumulado considera o histórico inteiro', () => {

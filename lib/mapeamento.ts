@@ -4,11 +4,11 @@ export type LinhaLancamento = {
   id: string
   tipo: string
   data: string
+  data_fim: string | null
   valor_centavos: number
   descricao: string
   categoria_id: string | null
   origem: string | null
-  noites: number | null
   hospedes: number | null
   criado_em: string
 }
@@ -20,11 +20,11 @@ export function paraLancamento(linha: LinhaLancamento): Lancamento {
     id: linha.id,
     tipo: linha.tipo === 'entrada' ? 'entrada' : 'saida',
     data: linha.data,
+    dataFim: linha.data_fim,
     valorCentavos: linha.valor_centavos,
     descricao: linha.descricao,
     categoriaId: linha.categoria_id,
     origem: linha.origem,
-    noites: linha.noites,
     hospedes: linha.hospedes,
     criadoEm: linha.criado_em,
   }
@@ -40,11 +40,11 @@ export function paraLinhaLancamento(entrada: EntradaLancamento) {
   return {
     tipo: entrada.tipo,
     data: entrada.data,
+    data_fim: ehEntrada ? entrada.dataFim : null,
     valor_centavos: entrada.valorCentavos,
     descricao: entrada.descricao,
     categoria_id: ehEntrada ? null : entrada.categoriaId,
     origem: ehEntrada ? entrada.origem : null,
-    noites: ehEntrada ? entrada.noites : null,
     hospedes: ehEntrada ? entrada.hospedes : null,
   }
 }

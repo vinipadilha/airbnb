@@ -10,15 +10,16 @@ export type Categoria = {
 export type Lancamento = {
   id: string
   tipo: TipoLancamento
-  /** YYYY-MM-DD */
+  /** YYYY-MM-DD. Em entradas, é o check-in. */
   data: string
+  /** YYYY-MM-DD. Check-out da reserva; null em saídas e em receitas sem estadia. */
+  dataFim: string | null
   valorCentavos: number
   descricao: string
   /** Só em saídas. */
   categoriaId: string | null
   /** Só em entradas. */
   origem: string | null
-  noites: number | null
   hospedes: number | null
   criadoEm: string
 }

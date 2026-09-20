@@ -5,8 +5,10 @@ import { COOKIE_SESSAO, DURACAO_SESSAO_MS, assinarToken, comparaSegura } from '@
 export async function POST(request: Request) {
   const pinEsperado = process.env.APP_PIN
   const segredo = process.env.APP_SESSION_SECRET
+
+  // Sem PIN configurado não há o que validar: o app está aberto por opção.
   if (!pinEsperado || !segredo) {
-    return NextResponse.json({ erro: 'Servidor mal configurado.' }, { status: 500 })
+    return NextResponse.json({ ok: true, semPin: true })
   }
 
   const ip = ipDoPedido(request)

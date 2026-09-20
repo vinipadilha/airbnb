@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
+import { CalendarioMes } from '@/components/CalendarioMes'
 import { CardPendencias } from '@/components/CardPendencias'
 import { CartoesTotais } from '@/components/CartoesTotais'
 import { Extrato } from '@/components/Extrato'
@@ -10,12 +11,16 @@ import { ModalLancamento } from '@/components/ModalLancamento'
 import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
 import { competenciaAtual } from '@/lib/competencia'
+import type { DiaDoMes, Ocupacao } from '@/lib/calendario'
 import type { Categoria, GastoFixo, Lancamento } from '@/lib/tipos'
 import type { TotalCategoria, TotaisMes } from '@/lib/totais'
 
 type DadosMes = {
   competencia: string
   lancamentos: Lancamento[]
+  dias: DiaDoMes[]
+  ocupacao: Ocupacao
+  diariaMediaCentavos: number
   totais: TotaisMes
   saldoTotalCentavos: number
   porCategoria: TotalCategoria[]
@@ -133,7 +138,9 @@ export default function Dashboard() {
               <CartoesTotais
                 totais={dados.totais}
                 saldoTotalCentavos={dados.saldoTotalCentavos}
+                diariaMediaCentavos={dados.diariaMediaCentavos}
               />
+              <CalendarioMes dias={dados.dias} ocupacao={dados.ocupacao} />
               <GraficoCategorias
                 porCategoria={dados.porCategoria}
                 categorias={dados.categorias}

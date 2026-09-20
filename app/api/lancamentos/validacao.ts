@@ -22,7 +22,16 @@ export function validarCorpo(corpo: unknown):
     return { ok: false, erro: 'Entrada precisa de origem.' }
   }
 
-  for (const campo of ['noites', 'hospedes'] as const) {
+  if (c.dataFim !== undefined && c.dataFim !== null) {
+    if (typeof c.dataFim !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(c.dataFim)) {
+      return { ok: false, erro: 'Check-out inválido.' }
+    }
+    if (c.tipo === 'entrada' && c.dataFim <= (c.data as string)) {
+      return { ok: false, erro: 'O check-out precisa ser depois do check-in.' }
+    }
+  }
+
+  for (const campo of ['hospedes'] as const) {
     const v = c[campo]
     // Barra aqui em vez de deixar o CHECK do banco barrar: senão o usuário vê
     // a mensagem crua do Postgres.
@@ -36,11 +45,11 @@ export function validarCorpo(corpo: unknown):
     valor: {
       tipo: c.tipo,
       data: c.data,
+      dataFim: typeof c.dataFim === 'string' ? c.dataFim : null,
       valorCentavos: c.valorCentavos as number,
       descricao: typeof c.descricao === 'string' ? c.descricao : '',
       categoriaId: typeof c.categoriaId === 'string' ? c.categoriaId : null,
       origem: typeof c.origem === 'string' ? c.origem : null,
-      noites: Number.isInteger(c.noites) ? (c.noites as number) : null,
       hospedes: Number.isInteger(c.hospedes) ? (c.hospedes as number) : null,
     },
   }
