@@ -17,6 +17,13 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-18-financeiro-studio-design.md` — leia antes de começar. Em qualquer divergência, a spec vence este plano.
 
+> **Este plano foi executado e está histórico.** Depois dele, o app mudou em
+> três pontos que a §14 da spec detalha: entradas passaram a ter período
+> (check-in/check-out) com rateio por noite, o calendário do mês virou a tela
+> principal com ocupação e diária média, e a tranca por PIN virou opcional.
+> O código no repositório é a referência atual; este documento mostra como se
+> chegou até ele, não o estado final.
+
 ---
 
 ## Convenções que valem para o plano inteiro

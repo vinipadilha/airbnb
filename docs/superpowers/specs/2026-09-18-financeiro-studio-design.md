@@ -2,7 +2,7 @@
 
 **Data:** 2026-09-18
 **Alvo:** `studio-financeiro` (projeto novo — Next.js 15 + React 19 + Supabase + Tailwind + Framer Motion + Recharts)
-**Status:** Aprovado no brainstorming; pronto para plano de implementação.
+**Status:** Implementado e em uso. Revisado em 2026-09-20 — ver §14.
 **Spec de origem:** `~/Downloads/spec-app-financeiro-airbnb.md`
 
 ## 1. Objetivo
@@ -24,6 +24,8 @@ corrente). Escala não é uma preocupação de projeto.
 | Valor da reserva | **Líquido (o que caiu na conta)** | Campo único. O saldo do app bate com o extrato bancário. |
 | Carga do histórico | **Tela de importar CSV** | Serve ao histórico inicial e a qualquer exportação futura, sem depender de código novo. |
 | Lançamento dos gastos fixos | **Fila de pendências confirmada pelo usuário** | A spec pede explicitamente confirmar/ajustar antes de salvar. Não depende de rotina agendada. |
+| Período da reserva | **Check-in e check-out, com rateio por noite** | Ver §14. Decidido depois de ver os dados reais. |
+| Tranca por PIN | **Opcional, desligada** | Ver §14. Decisão do dono, com o risco registrado. |
 
 ## 3. Acesso e segurança
 
@@ -72,9 +74,13 @@ Exclusão é **arquivamento** (soft-delete): a categoria some dos selects mas os
 lançamentos históricos continuam classificados.
 
 ### `lancamentos` — tabela central
-`id · tipo ('entrada'|'saida') · data (date) · valor_centavos (int) · descricao ·
-categoria_id (FK, só saídas) · origem (só entradas) ·
-noites (int, opcional) · hospedes (int, opcional) · criado_em (timestamptz)`
+`id · tipo ('entrada'|'saida') · data (date) · data_fim (date, só entradas) ·
+valor_centavos (int) · descricao · categoria_id (FK, só saídas) ·
+origem (só entradas) · hospedes (int, opcional) · criado_em (timestamptz)`
+
+Em entradas, `data` é o **check-in** e `data_fim` é o **check-out**. As noites
+são derivadas da diferença — não há coluna `noites`, porque duas fontes para o
+mesmo fato divergem com o tempo.
 
 **`origem` não tem `DEFAULT 'Airbnb'` no banco.** Um default dispara em todo
 INSERT que omita a coluna, inclusive o de uma saída — que o `CHECK` então
@@ -316,3 +322,53 @@ retorno.
 5. Import de CSV do histórico
 6. Gráfico de breakdown por categoria
 7. Camada de motion
+
+---
+
+## 14. Revisão de 2026-09-20 — o que mudou depois dos dados reais
+
+Ao importar o histórico real (77 reservas vindas do PriceLabs), três coisas da
+spec original se mostraram erradas. Ficam registradas aqui para não parecerem
+desvios acidentais.
+
+### Entrada tem período, não data única
+
+O histórico contém **uma reserva de 244 noites** (21/12/2025 a 22/08/2026,
+R$ 27.104,64). Com data única, ela caía inteira no mês do check-in: dezembro de
+2025 aparecia com R$ 29.567 e ocupação de 845%, e os oito meses seguintes,
+zerados. O número do mês mentia exatamente no caso que mais importa — hóspede de
+longa estadia.
+
+Entradas passaram a ter `data_fim`. Receita e noites são **rateadas pelos meses
+que a estadia atravessa**. O rateio distribui os centavos que sobram em vez de
+arredondar por noite: dividir R$ 27.104,64 por 244 dá dízima, e arredondar cada
+noite fazia R$ 1,12 evaporarem. Há teste garantindo que a soma dos meses bate
+exatamente com o valor da reserva.
+
+Migração: `supabase/migracao-001-periodo.sql`.
+
+### O calendário virou a tela principal
+
+O dashboard mostra o mês como grade de dias, com as noites reservadas em faixa
+contínua e as livres em cinza — a mesma leitura que o anfitrião já faz no
+Airbnb. Junto vêm **ocupação em %**, **diária média** e **margem de lucro**,
+que respondem "o negócio está indo bem?" em vez de só "quanto entrou e saiu".
+
+### A tranca por PIN virou opcional
+
+Decisão explícita do dono, depois de o risco ter sido apresentado: sem `APP_PIN`
+no ambiente, o app abre direto, e quem tiver a URL vê faturamento e gastos. O
+código da tranca continua inteiro — definir `APP_PIN` e `APP_SESSION_SECRET`
+liga tudo de volta sem nenhuma alteração.
+
+### Integração automática: possível, adiada
+
+A Customer API do PriceLabs expõe *Get Reservations* e *Get Bookings Report* —
+é a fonte que alimentaria o app sozinho, já que o Airbnb não tem API para
+anfitrião individual. A chave custa **US$ 1/mês por propriedade**. Adiada por
+decisão do dono: o plano PriceLabs em si ainda está em avaliação, e amarrar o
+app a uma assinatura indefinida não se paga para uma importação ocasional de CSV.
+
+Se um dia for retomada, o caminho é um endpoint de sincronização lendo a chave
+do ambiente — sem mudança no modelo de dados, porque `data_fim` e `hospedes` já
+correspondem ao que a API devolve.
