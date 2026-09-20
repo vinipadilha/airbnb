@@ -188,8 +188,9 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                                 <span className="min-w-0 truncate pl-4 text-xs text-slate-600">
                                   {l.descricao || '(sem descrição)'}
                                 </span>
-                                <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                                <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums text-slate-500">
                                   {formatCentavos(l.valorCentavos)}
+                                  <span className="text-slate-300">›</span>
                                 </span>
                               </button>
                             ))}
@@ -208,7 +209,7 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay }}
                     onClick={() => onEditar(l)}
-                    className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"
+                    className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm transition-transform active:scale-[0.99]"
                   >
                     <span className="flex min-w-0 items-center gap-2.5">
                       {l.tipo === 'saida' && (
@@ -242,6 +243,9 @@ export function Extrato({ lancamentos, categorias, competencia, onEditar }: Prop
                         </span>
                       )}
                     </span>
+                    {/* Sinaliza que a linha abre para editar. Sem isso o item
+                        parece só um texto e ninguém descobre que dá para tocar. */}
+                    <span className="shrink-0 pl-2 text-slate-300">›</span>
                   </motion.button>
                 )
               })}
