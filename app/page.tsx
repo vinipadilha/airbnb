@@ -160,6 +160,7 @@ export default function Dashboard() {
                 <Extrato
                   lancamentos={dados.lancamentos}
                   categorias={dados.categorias}
+                  competencia={dados.competencia}
                   onEditar={abrirEdicao}
                 />
               </div>

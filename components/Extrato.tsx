@@ -1,13 +1,26 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { noitesDe, noitesNoMes, receitaNoMes } from '@/lib/calendario'
 import { formatCentavos } from '@/lib/dinheiro'
 import type { Categoria, Lancamento } from '@/lib/tipos'
 
 type Props = {
   lancamentos: Lancamento[]
   categorias: Categoria[]
+  competencia: string
   onEditar: (lancamento: Lancamento) => void
+}
+
+/**
+ * Quanto deste lançamento pertence ao mês exibido.
+ *
+ * Uma reserva que atravessa a virada do mês aparece nos dois meses, e mostrar
+ * o valor cheio nos dois faria a soma da lista não bater com o total do card —
+ * o usuário somaria R$ 3.683 numa tela que anuncia R$ 3.241.
+ */
+function valorNoMes(l: Lancamento, competencia: string): number {
+  return l.tipo === 'entrada' ? receitaNoMes(l, competencia) : l.valorCentavos
 }
 
 function agruparPorDia(lancamentos: Lancamento[]): [string, Lancamento[]][] {
@@ -26,7 +39,7 @@ function rotuloDia(data: string): string {
   return `${dia}/${mes}`
 }
 
-export function Extrato({ lancamentos, categorias, onEditar }: Props) {
+export function Extrato({ lancamentos, categorias, competencia, onEditar }: Props) {
   if (lancamentos.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-10 text-center shadow-sm">
@@ -38,6 +51,10 @@ export function Extrato({ lancamentos, categorias, onEditar }: Props) {
 
   const nomeCategoria = (id: string | null) =>
     categorias.find((c) => c.id === id)?.nome ?? 'Sem categoria'
+
+  /** Reserva que só em parte pertence a este mês. */
+  const parcial = (l: Lancamento) =>
+    l.tipo === 'entrada' && noitesDe(l) > 0 && noitesNoMes(l, competencia) < noitesDe(l)
 
   let indice = 0
 
@@ -56,18 +73,27 @@ export function Extrato({ lancamentos, categorias, onEditar }: Props) {
                 onClick={() => onEditar(l)}
                 className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"
               >
-                <span className="flex flex-col">
-                  <span className="text-sm">{l.descricao || '(sem descrição)'}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm">{l.descricao || '(sem descrição)'}</span>
                   <span className="text-xs text-slate-400">
                     {l.tipo === 'entrada' ? l.origem : nomeCategoria(l.categoriaId)}
+                    {parcial(l) &&
+                      ` · ${noitesNoMes(l, competencia)} de ${noitesDe(l)} noites`}
                   </span>
                 </span>
-                <span
-                  className={`text-sm tabular-nums ${
-                    l.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
-                  }`}
-                >
-                  {l.tipo === 'entrada' ? '+' : '−'} {formatCentavos(l.valorCentavos)}
+                <span className="flex shrink-0 flex-col items-end">
+                  <span
+                    className={`text-sm tabular-nums ${
+                      l.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
+                    }`}
+                  >
+                    {l.tipo === 'entrada' ? '+' : '−'} {formatCentavos(valorNoMes(l, competencia))}
+                  </span>
+                  {parcial(l) && (
+                    <span className="text-[11px] tabular-nums text-slate-400">
+                      de {formatCentavos(l.valorCentavos)}
+                    </span>
+                  )}
                 </span>
               </motion.button>
             ))}
