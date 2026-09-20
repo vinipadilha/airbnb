@@ -134,23 +134,29 @@ export default function Dashboard() {
           className="flex flex-col gap-6"
         >
           {dados && (
-            <>
-              <CartoesTotais
-                totais={dados.totais}
-                saldoTotalCentavos={dados.saldoTotalCentavos}
-                diariaMediaCentavos={dados.diariaMediaCentavos}
-              />
-              <CalendarioMes dias={dados.dias} ocupacao={dados.ocupacao} />
-              <GraficoCategorias
-                porCategoria={dados.porCategoria}
-                categorias={dados.categorias}
-              />
-              <Extrato
-                lancamentos={dados.lancamentos}
-                categorias={dados.categorias}
-                onEditar={abrirEdicao}
-              />
-            </>
+            // Uma coluna no celular; a partir de lg, duas — senao o conteudo
+            // vira uma faixa estreita no meio de uma tela de 1440px.
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+              <div className="flex flex-col gap-6">
+                <CartoesTotais
+                  totais={dados.totais}
+                  saldoTotalCentavos={dados.saldoTotalCentavos}
+                  diariaMediaCentavos={dados.diariaMediaCentavos}
+                />
+                <CalendarioMes dias={dados.dias} ocupacao={dados.ocupacao} />
+              </div>
+              <div className="flex flex-col gap-6">
+                <GraficoCategorias
+                  porCategoria={dados.porCategoria}
+                  categorias={dados.categorias}
+                />
+                <Extrato
+                  lancamentos={dados.lancamentos}
+                  categorias={dados.categorias}
+                  onEditar={abrirEdicao}
+                />
+              </div>
+            </div>
           )}
         </motion.div>
       </AnimatePresence>
