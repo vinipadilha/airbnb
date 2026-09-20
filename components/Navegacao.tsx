@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const ITENS = [
   { href: '/', rotulo: 'Resumo' },
+  { href: '/analise', rotulo: 'Análise' },
   { href: '/fixos', rotulo: 'Fixos' },
   { href: '/ajustes', rotulo: 'Ajustes' },
 ]
@@ -19,7 +20,7 @@ export function Navegacao() {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-xl px-4 py-2 text-sm transition-colors ${
+            className={`rounded-xl px-3 py-2 text-sm transition-colors sm:px-4 ${
               atual === item.href ? 'bg-slate-900 text-white' : 'text-slate-500'
             }`}
           >
