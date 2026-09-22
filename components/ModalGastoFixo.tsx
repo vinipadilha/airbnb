@@ -2,23 +2,32 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
-import type { Categoria, GastoFixo } from '@/lib/tipos'
+import type { Categoria, GastoFixo, PagoPor } from '@/lib/tipos'
 import { CampoValor } from './CampoValor'
 
 type Props = {
   aberto: boolean
   gastoFixo: GastoFixo | null
   categorias: Categoria[]
+  nomeSocio: string
   onFechar: () => void
   onSalvo: () => void
 }
 
-export function ModalGastoFixo({ aberto, gastoFixo, categorias, onFechar, onSalvo }: Props) {
+export function ModalGastoFixo({
+  aberto,
+  gastoFixo,
+  categorias,
+  nomeSocio,
+  onFechar,
+  onSalvo,
+}: Props) {
   const [nome, setNome] = useState(gastoFixo?.nome ?? '')
   const [valorCentavos, setValorCentavos] = useState<number | null>(
     gastoFixo?.valorReferenciaCentavos ?? null,
   )
   const [categoriaId, setCategoriaId] = useState(gastoFixo?.categoriaId ?? '')
+  const [pagoPor, setPagoPor] = useState<PagoPor>(gastoFixo?.pagoPor ?? 'voce')
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -41,7 +50,12 @@ export function ModalGastoFixo({ aberto, gastoFixo, categorias, onFechar, onSalv
     setSalvando(true)
     setErro(null)
 
-    const corpo = { nome: nome.trim(), valorReferenciaCentavos: valorCentavos, categoriaId }
+    const corpo = {
+      nome: nome.trim(),
+      valorReferenciaCentavos: valorCentavos,
+      categoriaId,
+      pagoPor,
+    }
     const resposta = await fetch(
       gastoFixo ? `/api/gastos-fixos/${gastoFixo.id}` : '/api/gastos-fixos',
       {
@@ -133,6 +147,33 @@ export function ModalGastoFixo({ aberto, gastoFixo, categorias, onFechar, onSalv
                 ))}
               </select>
             </label>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs text-slate-500">Quem paga</span>
+              <div className="flex gap-2 rounded-xl bg-slate-100 p-1">
+                {[
+                  { valor: 'voce' as const, rotulo: 'Você' },
+                  { valor: 'socio' as const, rotulo: nomeSocio },
+                ].map((op) => (
+                  <button
+                    key={op.valor}
+                    type="button"
+                    onClick={() => setPagoPor(op.valor)}
+                    className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
+                      pagoPor === op.valor ? 'bg-white shadow-sm' : 'text-slate-500'
+                    }`}
+                  >
+                    {op.rotulo}
+                  </button>
+                ))}
+              </div>
+              {pagoPor === 'socio' && (
+                <span className="px-1 text-xs text-slate-400">
+                  Todo mês a fila já lança marcado como pago por {nomeSocio}, e o valor
+                  volta para ele somado à parte dele.
+                </span>
+              )}
+            </div>
 
             <p className="text-xs text-slate-400">
               O valor é só referência: todo mês o app sugere este número e você ajusta

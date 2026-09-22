@@ -1,5 +1,13 @@
 export type TipoLancamento = 'entrada' | 'saida'
 
+/**
+ * Quem tirou o dinheiro do bolso para pagar a despesa.
+ *
+ * Importa para o acerto: gasto que o sócio pagou é adiantamento de despesa
+ * comum, e volta para ele somado à parte dele no lucro.
+ */
+export type PagoPor = 'voce' | 'socio'
+
 export type Categoria = {
   id: string
   nome: string
@@ -33,6 +41,8 @@ export type Lancamento = {
    * previsão. Saídas são sempre true.
    */
   recebido: boolean
+  /** Só em saídas. Entradas são sempre recebidas por você. */
+  pagoPor: PagoPor
   criadoEm: string
 }
 
@@ -44,6 +54,8 @@ export type GastoFixo = {
   arquivada: boolean
   /** YYYY-MM a partir do qual o gasto passa a gerar pendência. */
   competenciaInicial: string
+  /** Quem costuma pagar. A fila do mês já lança com esta marcação. */
+  pagoPor: PagoPor
 }
 
 export type GastoFixoLancado = {

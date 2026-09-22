@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
     const { data: fixo } = await supabase
       .from('gastos_fixos')
-      .select('nome, categoria_id')
+      .select('nome, categoria_id, pago_por')
       .eq('id', item.gastoFixoId)
       .single()
 
@@ -86,6 +86,9 @@ export async function POST(request: Request) {
         valor_centavos: item.valorCentavos,
         descricao: fixo.nome,
         categoria_id: fixo.categoria_id,
+        // Herda de quem costuma pagar: o condomínio sai do bolso do sócio
+        // todo mês, e marcar isso a cada lançamento seria esquecível.
+        pago_por: fixo.pago_por === 'socio' ? 'socio' : 'voce',
       })
       .select('id')
       .single()

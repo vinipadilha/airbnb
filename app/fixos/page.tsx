@@ -10,6 +10,7 @@ import type { Categoria, GastoFixo } from '@/lib/tipos'
 export default function Fixos() {
   const [fixos, setFixos] = useState<GastoFixo[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [nomeSocio, setNomeSocio] = useState('Sócio')
   const [pendentesIds, setPendentesIds] = useState<Set<string>>(new Set())
   const [erro, setErro] = useState<string | null>(null)
 
@@ -30,7 +31,12 @@ export default function Fixos() {
       if (!fixosRes.ok || !mesRes.ok) throw new Error('falhou')
 
       setFixos((await fixosRes.json()) as GastoFixo[])
-      setCategorias(((await mesRes.json()) as { categorias: Categoria[] }).categorias)
+      const mes = (await mesRes.json()) as {
+        categorias: Categoria[]
+        configuracoes?: { nomeSocio: string }
+      }
+      setCategorias(mes.categorias)
+      if (mes.configuracoes) setNomeSocio(mes.configuracoes.nomeSocio)
 
       // Quem não está pendente já foi lançado neste mês.
       if (pendRes.ok) {
@@ -122,6 +128,7 @@ export default function Fixos() {
         aberto={modalAberto}
         gastoFixo={editando}
         categorias={categorias}
+        nomeSocio={nomeSocio}
         onFechar={() => setModalAberto(false)}
         onSalvo={() => void carregar()}
       />

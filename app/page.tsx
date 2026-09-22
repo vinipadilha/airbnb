@@ -263,6 +263,7 @@ export default function Dashboard() {
         aberto={modalAberto}
         categorias={dados?.categorias ?? []}
         lancamento={editando}
+        nomeSocio={dados?.configuracoes.nomeSocio ?? 'Sócio'}
         onFechar={() => setModalAberto(false)}
         onSalvo={() => void recarregarTudo()}
       />

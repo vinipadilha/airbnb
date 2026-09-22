@@ -17,6 +17,9 @@ export async function PATCH(request: Request, { params }: Contexto) {
   if (typeof corpo.categoriaId === 'string') {
     mudancas.categoria_id = corpo.categoriaId
   }
+  if (corpo.pagoPor === 'voce' || corpo.pagoPor === 'socio') {
+    mudancas.pago_por = corpo.pagoPor
+  }
 
   if (Object.keys(mudancas).length === 0) {
     return NextResponse.json({ erro: 'Nada para alterar.' }, { status: 400 })

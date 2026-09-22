@@ -20,6 +20,7 @@ function entrada(
     origem: 'Airbnb',
     hospedes: null,
     recebido: true,
+    pagoPor: 'voce',
     criadoEm: '',
     ...p,
   }
@@ -38,7 +39,7 @@ test('noitesDe de saída é zero', () => {
   const saida: Lancamento = {
     id: 's', tipo: 'saida', data: '2026-09-05', dataFim: null, valorCentavos: 9800,
     descricao: 'Internet', categoriaId: 'c', origem: null, hospedes: null,
-    recebido: true, criadoEm: '',
+    recebido: true, pagoPor: 'voce', criadoEm: '',
   }
   assert.equal(noitesDe(saida), 0)
 })

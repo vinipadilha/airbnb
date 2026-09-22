@@ -9,6 +9,7 @@ function fixo(p: Partial<GastoFixo> & Pick<GastoFixo, 'id' | 'nome'>): GastoFixo
     categoriaId: 'fixas',
     arquivada: false,
     competenciaInicial: '2026-01',
+    pagoPor: 'voce',
     ...p,
   }
 }

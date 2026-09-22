@@ -14,6 +14,7 @@ test('paraLancamento converte entrada do banco', () => {
     origem: 'Airbnb',
     hospedes: 2,
     recebido: true,
+    pago_por: 'voce',
     criado_em: '2026-09-03T12:00:00Z',
   }
   assert.deepEqual(paraLancamento(linha), {
@@ -27,6 +28,7 @@ test('paraLancamento converte entrada do banco', () => {
     origem: 'Airbnb',
     hospedes: 2,
     recebido: true,
+    pagoPor: 'voce',
     criadoEm: '2026-09-03T12:00:00Z',
   })
 })
@@ -42,6 +44,7 @@ test('paraLinhaLancamento zera os campos do outro tipo numa saída', () => {
     origem: 'Airbnb',
     hospedes: 2,
     recebido: true,
+    pagoPor: 'voce',
   })
   assert.deepEqual(linha, {
     tipo: 'saida',
@@ -53,6 +56,7 @@ test('paraLinhaLancamento zera os campos do outro tipo numa saída', () => {
     origem: null,
     hospedes: null,
     recebido: true,
+    pago_por: 'voce',
   })
 })
 
@@ -67,6 +71,7 @@ test('paraLinhaLancamento zera a categoria numa entrada', () => {
     origem: 'Airbnb',
     hospedes: null,
     recebido: true,
+    pagoPor: 'voce',
   })
   assert.equal(linha.categoria_id, null)
   assert.equal(linha.origem, 'Airbnb')
@@ -83,6 +88,7 @@ test('entrada programada mantém recebido falso na ida para o banco', () => {
     origem: 'Airbnb',
     hospedes: null,
     recebido: false,
+    pagoPor: 'voce',
   })
   assert.equal(linha.recebido, false)
 })
@@ -98,6 +104,39 @@ test('saída nunca vai programada para o banco', () => {
     origem: null,
     hospedes: null,
     recebido: false,
+    pagoPor: 'voce',
   })
   assert.equal(linha.recebido, true)
+})
+
+test('saída guarda quem pagou', () => {
+  const linha = paraLinhaLancamento({
+    tipo: 'saida',
+    data: '2026-09-10',
+    dataFim: null,
+    valorCentavos: 60000,
+    descricao: 'Condomínio',
+    categoriaId: 'cat-1',
+    origem: null,
+    hospedes: null,
+    recebido: true,
+    pagoPor: 'socio',
+  })
+  assert.equal(linha.pago_por, 'socio')
+})
+
+test('entrada é sempre recebida por você, mesmo se marcarem outra coisa', () => {
+  const linha = paraLinhaLancamento({
+    tipo: 'entrada',
+    data: '2026-09-10',
+    dataFim: '2026-09-12',
+    valorCentavos: 60000,
+    descricao: 'Reserva',
+    categoriaId: null,
+    origem: 'Airbnb',
+    hospedes: null,
+    recebido: true,
+    pagoPor: 'socio',
+  })
+  assert.equal(linha.pago_por, 'voce')
 })

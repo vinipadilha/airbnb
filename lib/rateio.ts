@@ -8,6 +8,8 @@ export type Rateio = {
   liquidoCentavos: number
   suaParteCentavos: number
   parteDoSocioCentavos: number
+  /** Gastos do mês que o sócio pagou do bolso dele. */
+  gastosPagosPeloSocioCentavos: number
   /** Quanto já foi repassado ao sócio neste mês. */
   repassadoCentavos: number
   /** Quanto ainda falta repassar. Negativo significa que você adiantou. */
@@ -15,7 +17,7 @@ export type Rateio = {
 }
 
 /**
- * Divide o resultado do mês entre você e o sócio.
+ * Divide o resultado do mês entre você e o sócio, e calcula o acerto.
  *
  * Repasse tem tabela própria, separada de entradas e saídas, por dois motivos.
  * O primeiro é conceitual: mandar o Pix ao sócio não é custo de operar o
@@ -37,6 +39,7 @@ export function calcularRateio(
 
   let entradasCentavos = 0
   let gastosCentavos = 0
+  let gastosPagosPeloSocioCentavos = 0
 
   for (const l of lancamentos) {
     if (competenciaDe(l.data) !== competencia) continue
@@ -53,6 +56,8 @@ export function calcularRateio(
     // palpite conservador, porque erra para menos no que se deve ao sócio.
     if (l.categoriaId === null || !foraDoRateio.has(l.categoriaId)) {
       gastosCentavos += l.valorCentavos
+      // Quem pagou não muda o resultado do mês, só o acerto no fim.
+      if (l.pagoPor === 'socio') gastosPagosPeloSocioCentavos += l.valorCentavos
     }
   }
 
@@ -73,7 +78,12 @@ export function calcularRateio(
     liquidoCentavos,
     suaParteCentavos,
     parteDoSocioCentavos,
+    gastosPagosPeloSocioCentavos,
     repassadoCentavos,
-    aRepassarCentavos: parteDoSocioCentavos - repassadoCentavos,
+    // O sócio recebe a parte dele MAIS o que adiantou do bolso: a receita
+    // inteira caiu na sua conta, então o desembolso dele precisa voltar junto.
+    // Sem isso ele arcaria sozinho com uma despesa que é dos dois.
+    aRepassarCentavos:
+      parteDoSocioCentavos + gastosPagosPeloSocioCentavos - repassadoCentavos,
   }
 }

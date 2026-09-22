@@ -11,6 +11,7 @@ function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' |
     categoriaId: null,
     origem: null,
     hospedes: null,
+    pagoPor: 'voce',
     criadoEm: '2026-09-01T00:00:00Z',
     ...p,
   }

@@ -1,4 +1,4 @@
-import type { GastoFixo, Lancamento } from './tipos'
+import type { GastoFixo, Lancamento, PagoPor } from './tipos'
 
 export type LinhaLancamento = {
   id: string
@@ -11,7 +11,13 @@ export type LinhaLancamento = {
   origem: string | null
   hospedes: number | null
   recebido: boolean
+  pago_por: string | null
   criado_em: string
+}
+
+/** Banco sem a migração 006 devolve null: quem paga, por padrão, é você. */
+function paraPagoPor(valor: string | null | undefined): PagoPor {
+  return valor === 'socio' ? 'socio' : 'voce'
 }
 
 export type EntradaLancamento = Omit<Lancamento, 'id' | 'criadoEm'>
@@ -30,6 +36,7 @@ export function paraLancamento(linha: LinhaLancamento): Lancamento {
     // Banco sem a migração 005 não tem a coluna: tratar como recebido
     // preserva o comportamento anterior em vez de zerar o saldo.
     recebido: linha.recebido !== false,
+    pagoPor: paraPagoPor(linha.pago_por),
     criadoEm: linha.criado_em,
   }
 }
@@ -52,6 +59,8 @@ export function paraLinhaLancamento(entrada: EntradaLancamento) {
     hospedes: ehEntrada ? entrada.hospedes : null,
     // Saída não tem "programado": o gasto é lançado quando acontece.
     recebido: ehEntrada ? entrada.recebido : true,
+    // Entrada cai sempre na sua conta; só saída tem quem pagou.
+    pago_por: ehEntrada ? 'voce' : entrada.pagoPor,
   }
 }
 
@@ -62,6 +71,7 @@ export type LinhaGastoFixo = {
   categoria_id: string
   arquivada: boolean
   competencia_inicial: string
+  pago_por: string | null
 }
 
 export function paraGastoFixo(linha: LinhaGastoFixo): GastoFixo {
@@ -72,5 +82,6 @@ export function paraGastoFixo(linha: LinhaGastoFixo): GastoFixo {
     categoriaId: linha.categoria_id,
     arquivada: linha.arquivada,
     competenciaInicial: linha.competencia_inicial,
+    pagoPor: paraPagoPor(linha.pago_por),
   }
 }

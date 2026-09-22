@@ -11,7 +11,7 @@ const categorias = [limpeza]
 function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' | 'valorCentavos'>): Lancamento {
   return {
     dataFim: null, descricao: '', categoriaId: null, origem: null,
-    hospedes: null, recebido: true, criadoEm: '', ...p,
+    hospedes: null, recebido: true, pagoPor: 'voce', criadoEm: '', ...p,
   }
 }
 
@@ -123,4 +123,46 @@ test('reserva que atravessa meses entra inteira no rateio do mês do check-in', 
   atravessa.dataFim = '2026-10-08'
   assert.equal(calcularRateio([atravessa], categorias, [], '2026-09', 12).entradasCentavos, 100000)
   assert.equal(calcularRateio([atravessa], categorias, [], '2026-10', 12).entradasCentavos, 0)
+})
+
+test('gasto pago pelo sócio volta para ele somado à parte dele', () => {
+  // Receita 3.000, gastos 1.000 (600 pelo sócio, 400 por você).
+  const receita = lanc({ id: 'r', tipo: 'entrada', data: '2026-09-01', valorCentavos: 300000, origem: 'Airbnb' })
+  const meu = lanc({ id: 'm', tipo: 'saida', data: '2026-09-05', valorCentavos: 40000, categoriaId: 'lim' })
+  const dele = lanc({ id: 'd', tipo: 'saida', data: '2026-09-06', valorCentavos: 60000, categoriaId: 'lim' })
+  dele.pagoPor = 'socio'
+
+  const r = calcularRateio([receita, meu, dele], categorias, [], '2026-09', 12)
+
+  // O líquido desconta os dois gastos: quem pagou não muda o resultado.
+  assert.equal(r.gastosCentavos, 100000)
+  assert.equal(r.liquidoCentavos, 200000)
+  assert.equal(r.suaParteCentavos, 24000)
+  assert.equal(r.parteDoSocioCentavos, 176000)
+
+  // Mas o Pix soma o que ele adiantou.
+  assert.equal(r.gastosPagosPeloSocioCentavos, 60000)
+  assert.equal(r.aRepassarCentavos, 176000 + 60000)
+})
+
+test('depois do Pix, cada um fica com a sua parte', () => {
+  const receita = lanc({ id: 'r', tipo: 'entrada', data: '2026-09-01', valorCentavos: 300000, origem: 'Airbnb' })
+  const meu = lanc({ id: 'm', tipo: 'saida', data: '2026-09-05', valorCentavos: 40000, categoriaId: 'lim' })
+  const dele = lanc({ id: 'd', tipo: 'saida', data: '2026-09-06', valorCentavos: 60000, categoriaId: 'lim' })
+  dele.pagoPor = 'socio'
+
+  const r = calcularRateio([receita, meu, dele], categorias, [], '2026-09', 12)
+
+  const caixaSeu = r.entradasCentavos - 40000
+  const sobraSua = caixaSeu - r.aRepassarCentavos
+  assert.equal(sobraSua, r.suaParteCentavos)
+
+  const sobraDele = r.aRepassarCentavos - 60000
+  assert.equal(sobraDele, r.parteDoSocioCentavos)
+})
+
+test('sem gasto do sócio, o repasse é só a parte dele', () => {
+  const r = calcularRateio([entrada, gasto], categorias, [], '2026-09', 12)
+  assert.equal(r.gastosPagosPeloSocioCentavos, 0)
+  assert.equal(r.aRepassarCentavos, r.parteDoSocioCentavos)
 })

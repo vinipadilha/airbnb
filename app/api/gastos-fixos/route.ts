@@ -33,6 +33,7 @@ export async function POST(request: Request) {
       nome: corpo.nome.trim(),
       valor_referencia_centavos: corpo.valorReferenciaCentavos,
       categoria_id: corpo.categoriaId,
+      pago_por: corpo.pagoPor === 'socio' ? 'socio' : 'voce',
       // Spec §5: passa a gerar pendência a partir deste mês, nunca retroativo.
       // Calculado no servidor com o fuso do usuário, não pelo relógio do banco.
       competencia_inicial: competenciaAtual(),

@@ -21,6 +21,9 @@ export function validarCorpo(corpo: unknown):
   if (c.tipo === 'entrada' && (typeof c.origem !== 'string' || c.origem.trim() === '')) {
     return { ok: false, erro: 'Entrada precisa de origem.' }
   }
+  if (c.pagoPor !== undefined && c.pagoPor !== 'voce' && c.pagoPor !== 'socio') {
+    return { ok: false, erro: 'Quem pagou é inválido.' }
+  }
 
   if (c.dataFim !== undefined && c.dataFim !== null) {
     if (typeof c.dataFim !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(c.dataFim)) {
@@ -54,6 +57,7 @@ export function validarCorpo(corpo: unknown):
       // Omitir recebido significa "já caiu": é o caso normal de quem lança
       // um gasto ou uma reserva que já foi paga.
       recebido: c.recebido !== false,
+      pagoPor: c.pagoPor === 'socio' ? 'socio' : 'voce',
     },
   }
 }

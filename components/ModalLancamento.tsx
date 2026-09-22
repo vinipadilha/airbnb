@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { hojeEmSaoPaulo } from '@/lib/competencia'
 import { noitesEntre, somarDias } from '@/lib/calendario'
-import type { Categoria, Lancamento, TipoLancamento } from '@/lib/tipos'
+import type { Categoria, Lancamento, PagoPor, TipoLancamento } from '@/lib/tipos'
 import { formatCentavos } from '@/lib/dinheiro'
 import { CampoValor } from './CampoValor'
 import { SeletorData } from './SeletorData'
@@ -15,6 +15,8 @@ type Props = {
   categorias: Categoria[]
   /** Preenchido quando está editando; null quando está criando. */
   lancamento: Lancamento | null
+  /** Nome do sócio, para o rótulo de quem pagou. */
+  nomeSocio: string
   onFechar: () => void
   onSalvo: () => void
 }
@@ -25,7 +27,14 @@ function rotuloCurto(data: string): string {
   return `${dia}/${mes}`
 }
 
-export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSalvo }: Props) {
+export function ModalLancamento({
+  aberto,
+  categorias,
+  lancamento,
+  nomeSocio,
+  onFechar,
+  onSalvo,
+}: Props) {
   const [tipo, setTipo] = useState<TipoLancamento>(lancamento?.tipo ?? 'entrada')
   const [data, setData] = useState(lancamento?.data ?? hojeEmSaoPaulo())
   const [valorCentavos, setValorCentavos] = useState<number | null>(
@@ -39,6 +48,7 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
   )
   const [hospedes, setHospedes] = useState(lancamento?.hospedes?.toString() ?? '')
   const [recebido, setRecebido] = useState(lancamento?.recebido ?? true)
+  const [pagoPor, setPagoPor] = useState<PagoPor>(lancamento?.pagoPor ?? 'voce')
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -71,6 +81,7 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
       dataFim: tipo === 'entrada' ? dataFim : null,
       hospedes: tipo === 'entrada' && hospedes !== '' ? Number(hospedes) : null,
       recebido: tipo === 'entrada' ? recebido : true,
+      pagoPor: tipo === 'saida' ? pagoPor : 'voce',
     }
 
     const resposta = await fetch(
@@ -218,19 +229,48 @@ export function ModalLancamento({ aberto, categorias, lancamento, onFechar, onSa
             </label>
 
             {tipo === 'saida' ? (
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-slate-500">Categoria</span>
-                <select
-                  value={categoriaId}
-                  onChange={(e) => setCategoriaId(e.target.value)}
-                  className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
-                >
-                  <option value="">Escolha…</option>
-                  {ativas.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </select>
-              </label>
+              <>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-slate-500">Categoria</span>
+                  <select
+                    value={categoriaId}
+                    onChange={(e) => setCategoriaId(e.target.value)}
+                    className="rounded-xl bg-slate-100 px-4 py-3 outline-none"
+                  >
+                    <option value="">Escolha…</option>
+                    {ativas.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs text-slate-500">Quem pagou</span>
+                  <div className="flex gap-2 rounded-xl bg-slate-100 p-1">
+                    {[
+                      { valor: 'voce' as const, rotulo: 'Você' },
+                      { valor: 'socio' as const, rotulo: nomeSocio },
+                    ].map((op) => (
+                      <button
+                        key={op.valor}
+                        type="button"
+                        onClick={() => setPagoPor(op.valor)}
+                        className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
+                          pagoPor === op.valor ? 'bg-white shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        {op.rotulo}
+                      </button>
+                    ))}
+                  </div>
+                  {pagoPor === 'socio' && (
+                    <span className="px-1 text-xs text-slate-400">
+                      Desconta do resultado igual, mas volta para {nomeSocio} somado à
+                      parte dele no repasse.
+                    </span>
+                  )}
+                </div>
+              </>
             ) : (
               <>
                 <label className="flex flex-col gap-1">

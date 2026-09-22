@@ -6,7 +6,7 @@ import type { Lancamento } from './tipos'
 function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' | 'valorCentavos'>): Lancamento {
   return {
     dataFim: null, descricao: '', categoriaId: null, origem: null,
-    hospedes: null, recebido: true, criadoEm: '', ...p,
+    hospedes: null, recebido: true, pagoPor: 'voce', criadoEm: '', ...p,
   }
 }
 

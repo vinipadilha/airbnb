@@ -25,7 +25,7 @@ function rotuloCurto(data: string): string {
 export function CardRateio({ rateio, configuracoes, repasses, competencia, onMudou }: Props) {
   const { percentualGestao: percentualSeu, nomeSocio } = configuracoes
   const { liquidoCentavos, suaParteCentavos, parteDoSocioCentavos } = rateio
-  const { repassadoCentavos, aRepassarCentavos } = rateio
+  const { repassadoCentavos, aRepassarCentavos, gastosPagosPeloSocioCentavos } = rateio
 
   const [aberto, setAberto] = useState(false)
   const [texto, setTexto] = useState('')
@@ -140,6 +140,23 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
             {formatCentavos(Math.abs(aRepassarCentavos))}
           </span>
         </div>
+
+        {gastosPagosPeloSocioCentavos > 0 && (
+          /* Sem esta linha o número do Pix parece grande demais e ninguém
+             lembra por quê: é a parte dele mais o que ele adiantou. */
+          <div className="flex flex-col gap-1 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span>parte de {nomeSocio}</span>
+              <span className="tabular-nums">{formatCentavos(parteDoSocioCentavos)}</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500">
+              <span>gastos que {nomeSocio} pagou</span>
+              <span className="tabular-nums">
+                + {formatCentavos(gastosPagosPeloSocioCentavos)}
+              </span>
+            </div>
+          </div>
+        )}
 
         {doMes.length > 0 && (
           <div className="flex flex-col gap-1">

@@ -31,8 +31,12 @@ create table if not exists lancamentos (
   -- Falso enquanto o dinheiro não caiu: reserva programada fica fora do
   -- saldo, das entradas e do rateio. Ver migracao-005-programado.sql.
   recebido boolean not null default true,
+  -- Quem tirou do bolso. Não muda o resultado do mês, muda o acerto: o que o
+  -- sócio adiantou volta para ele junto com a parte dele. Ver migracao-006.
+  pago_por text not null default 'voce' check (pago_por in ('voce', 'socio')),
   criado_em timestamptz not null default now(),
   constraint saida_sempre_recebida check (tipo = 'entrada' or recebido = true),
+  constraint entrada_sempre_sua check (tipo = 'saida' or pago_por = 'voce'),
   constraint campos_por_tipo check (
     (tipo = 'saida'
       and categoria_id is not null
@@ -56,7 +60,8 @@ create table if not exists gastos_fixos (
   valor_referencia_centavos integer not null check (valor_referencia_centavos > 0),
   categoria_id uuid not null references categorias(id),
   arquivada boolean not null default false,
-  competencia_inicial text not null check (competencia_inicial ~ '^\d{4}-\d{2}$')
+  competencia_inicial text not null check (competencia_inicial ~ '^\d{4}-\d{2}$'),
+  pago_por text not null default 'voce' check (pago_por in ('voce', 'socio'))
 );
 
 -- A chave primária composta é o que impede lançar o mesmo gasto fixo duas vezes
