@@ -120,8 +120,18 @@ export default function Calendario() {
                   ))}
                 </div>
 
-                {semanas.map((semana, iSemana) => {
-                  const segmentos = segmentosDaSemana(dados.reservas, semana)
+                {(() => {
+                  // Reservas cujo nome já apareceu neste mês. O nome vai no
+                  // primeiro pedaço VISÍVEL, não só no do check-in: uma
+                  // estadia que começou no mês anterior apareceria como uma
+                  // faixa anônima no começo deste.
+                  const jaNomeadas = new Set<string>()
+                  return semanas.map((semana, iSemana) => {
+                  const segmentos = segmentosDaSemana(dados.reservas, semana).map((s) => {
+                    const nomear = !jaNomeadas.has(s.lancamentoId)
+                    jaNomeadas.add(s.lancamentoId)
+                    return { ...s, nomear }
+                  })
                   const faixas = Math.max(1, ...segmentos.map((s) => s.faixa + 1))
 
                   return (
@@ -171,15 +181,14 @@ export default function Calendario() {
                               marginTop: s.faixa === 0 ? 0 : 4,
                             }}
                           >
-                            {/* O nome só no pedaço do check-in, como no
-                                Airbnb; nos pedaços seguintes a faixa basta. */}
-                            {s.comecaAqui && <span className="truncate">{s.descricao}</span>}
+                            {s.nomear && <span className="truncate">{s.descricao}</span>}
                           </button>
                         ))}
                       </div>
                     </div>
                   )
-                })}
+                  })
+                })()}
 
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
                   <span className="flex items-center gap-1.5">
