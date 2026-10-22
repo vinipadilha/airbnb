@@ -28,7 +28,7 @@ export function GraficoCategorias({ porCategoria, categorias }: Props) {
   })
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm">
+    <div className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
       <span className="text-xs text-slate-500">Saídas por categoria</span>
 
       <div className="h-44">

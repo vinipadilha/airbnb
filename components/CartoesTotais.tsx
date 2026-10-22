@@ -25,11 +25,11 @@ export function CartoesTotais({ totais, saldoTotalCentavos }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1 rounded-2xl bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-1 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
         <span className="text-xs text-slate-500">Saldo do mês</span>
         <ValorAnimado
           centavos={totais.saldo}
-          className={`text-3xl font-medium ${totais.saldo < 0 ? 'text-red-600' : 'text-slate-900'}`}
+          className={`text-4xl font-semibold tracking-tight ${totais.saldo < 0 ? 'text-red-600' : 'text-slate-900'}`}
         />
         <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
           {/* Só faz sentido mostrar o estimado quando ele difere do real —
@@ -45,9 +45,9 @@ export function CartoesTotais({ totais, saldoTotalCentavos }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1 rounded-2xl bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-1 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
           <span className="text-xs text-slate-500">Entradas</span>
-          <ValorAnimado centavos={totais.entradas} className="text-lg text-emerald-600" />
+          <ValorAnimado centavos={totais.entradas} className="text-xl font-semibold tracking-tight text-emerald-600" />
           {totais.entradasProgramadas > 0 && (
             <span className="flex flex-col text-[11px] tabular-nums text-slate-400">
               <span>programado {formatCentavos(totais.entradasProgramadas)}</span>
@@ -57,14 +57,14 @@ export function CartoesTotais({ totais, saldoTotalCentavos }: Props) {
             </span>
           )}
         </div>
-        <div className="flex flex-col gap-1 rounded-2xl bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-1 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
           <span className="text-xs text-slate-500">Saídas</span>
-          <ValorAnimado centavos={totais.saidas} className="text-lg text-red-600" />
+          <ValorAnimado centavos={totais.saidas} className="text-xl font-semibold tracking-tight text-red-600" />
         </div>
       </div>
 
       {/* Diária média — ver comentário no tipo Props.
-      <div className="flex flex-col gap-1 rounded-2xl bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-1 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
         <span className="text-xs text-slate-500">Diária média</span>
         <ValorAnimado centavos={diariaMediaCentavos} className="text-lg text-slate-700" />
       </div>

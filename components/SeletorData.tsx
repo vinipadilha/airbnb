@@ -13,7 +13,7 @@ export function SeletorData({ valor, onChange }: Props) {
   const hoje = hojeEmSaoPaulo()
 
   function classeDoDia(data: string): string {
-    if (data === valor) return 'rounded-lg bg-slate-900 font-medium text-white'
+    if (data === valor) return 'rounded-lg bg-marca font-medium text-branco'
     if (data === hoje) {
       return 'rounded-lg text-slate-500 ring-1 ring-inset ring-amber-400 hover:bg-slate-200'
     }

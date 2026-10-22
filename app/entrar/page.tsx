@@ -35,7 +35,7 @@ export default function Entrar() {
   return (
     <main className="flex min-h-dvh items-center justify-center p-6">
       <form onSubmit={enviar} className="flex w-full max-w-xs flex-col gap-6">
-        <h1 className="text-center text-lg font-medium">Studio</h1>
+        <h1 className="text-center text-2xl font-semibold tracking-tight">Studio</h1>
         <input
           autoFocus
           type="password"
@@ -49,7 +49,7 @@ export default function Entrar() {
         <button
           type="submit"
           disabled={enviando || pin.length === 0}
-          className="rounded-xl bg-slate-900 py-3 text-white disabled:opacity-40"
+          className="bg-marca-gradiente rounded-xl py-3 font-medium text-branco disabled:opacity-40"
         >
           {enviando ? 'Entrando…' : 'Entrar'}
         </button>

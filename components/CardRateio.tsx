@@ -82,7 +82,7 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm">
+    <div className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-slate-500">Divisão do resultado</span>
         <span className="text-xs text-slate-400">
@@ -92,7 +92,7 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
 
       {liquidoCentavos > 0 && (
         <div className="flex h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className="bg-slate-900" style={{ width: `${fatiaSua}%` }} />
+          <div className="bg-marca" style={{ width: `${fatiaSua}%` }} />
           <div className="flex-1 bg-slate-300" />
         </div>
       )}
@@ -100,17 +100,17 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
-            <span className="h-2 w-2 rounded-full bg-slate-900" />
+            <span className="h-2 w-2 rounded-full bg-marca" />
             Sua parte ({percentualSeu}%)
           </span>
-          <ValorAnimado centavos={suaParteCentavos} className="text-lg" />
+          <ValorAnimado centavos={suaParteCentavos} className="text-xl font-semibold tracking-tight" />
         </div>
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
             <span className="h-2 w-2 rounded-full bg-slate-300" />
             {nomeSocio} ({100 - percentualSeu}%)
           </span>
-          <ValorAnimado centavos={parteDoSocioCentavos} className="text-lg" />
+          <ValorAnimado centavos={parteDoSocioCentavos} className="text-xl font-semibold tracking-tight" />
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
             </span>
           </span>
           <span
-            className={`text-xl tabular-nums ${
+            className={`text-xl font-semibold tracking-tight tabular-nums ${
               aRepassarCentavos > 0
                 ? 'text-amber-600'
                 : aRepassarCentavos < 0
@@ -230,7 +230,7 @@ export function CardRateio({ rateio, configuracoes, repasses, competencia, onMud
                 <button
                   onClick={registrar}
                   disabled={salvando}
-                  className="flex-1 rounded-xl bg-slate-900 py-2.5 text-sm text-white disabled:opacity-40"
+                  className="bg-marca-gradiente flex-1 rounded-xl py-2.5 text-sm font-medium text-branco disabled:opacity-40"
                 >
                   {salvando ? 'Registrando…' : 'Registrar repasse'}
                 </button>

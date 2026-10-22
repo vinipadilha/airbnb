@@ -1,3 +1,4 @@
+import { ocupacaoDoMes } from './calendario'
 import { competenciaDe } from './competencia'
 import type { Lancamento } from './tipos'
 
@@ -73,4 +74,24 @@ export function totaisDoAno(meses: MesDoAno[]) {
     }),
     { recebidoCentavos: 0, programadoCentavos: 0, saidasCentavos: 0, saldoCentavos: 0 },
   )
+}
+
+export type OcupacaoDoAno = {
+  competencia: string
+  rotulo: string
+  percentual: number
+  noitesOcupadas: number
+  diasNoMes: number
+}
+
+/**
+ * Ocupação de cada mês do ano, pela estadia — não pelo pagamento. Uma
+ * reserva de 28/12 a 03/01 ocupa noites dos dois anos, então quem chama
+ * precisa passar as reservas que atravessam a virada também.
+ */
+export function ocupacaoAnual(lancamentos: Lancamento[], ano: number): OcupacaoDoAno[] {
+  return ROTULOS.map((rotulo, i) => {
+    const competencia = `${ano}-${String(i + 1).padStart(2, '0')}`
+    return { competencia, rotulo, ...ocupacaoDoMes(lancamentos, competencia) }
+  })
 }

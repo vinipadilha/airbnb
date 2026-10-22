@@ -47,9 +47,9 @@ export function SeletorPeriodo({ inicio, fim, onChange }: Props) {
 
     if (ponta) {
       const cantos = data === inicio ? 'rounded-l-lg' : 'rounded-r-lg'
-      return `${cantos} bg-slate-900 font-medium text-white`
+      return `${cantos} bg-marca font-medium text-branco`
     }
-    if (dentro) return 'bg-slate-900/15 text-slate-700'
+    if (dentro) return 'bg-marca/15 text-slate-700'
     if (data === hoje) {
       return 'rounded-lg text-slate-500 ring-1 ring-inset ring-amber-400 hover:bg-slate-200'
     }

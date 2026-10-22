@@ -118,7 +118,7 @@ export function ImportarCsv({ onImportado }: { onImportado: () => void }) {
   const duplicadas = linhas.filter((l) => l.duplicada).length
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm">
+    <div className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
       <span className="text-xs text-slate-500">Importar reservas (CSV)</span>
       <p className="text-xs text-slate-400">
         Colunas: data, valor, descricao (opcionalmente noites e hospedes). Aceita
@@ -193,7 +193,7 @@ export function ImportarCsv({ onImportado }: { onImportado: () => void }) {
           <button
             onClick={importar}
             disabled={enviando}
-            className="rounded-xl bg-slate-900 py-3 text-white disabled:opacity-40"
+            className="bg-marca-gradiente rounded-xl py-3 font-medium text-branco disabled:opacity-40"
           >
             {enviando ? 'Importando…' : `Importar ${escolhidas.size} selecionadas`}
           </button>

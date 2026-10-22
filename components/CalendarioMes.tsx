@@ -19,7 +19,7 @@ export function CalendarioMes({ dias, ocupacao }: Props) {
   const vazias = dias.length > 0 ? dias[0].diaDaSemana : 0
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm">
+    <div className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-slate-500">Ocupação</span>
         <span className="text-xs text-slate-400">
@@ -28,10 +28,10 @@ export function CalendarioMes({ dias, ocupacao }: Props) {
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-3xl font-medium tabular-nums">{ocupacao.percentual}%</span>
+        <span className="text-3xl font-semibold tracking-tight tabular-nums">{ocupacao.percentual}%</span>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
           <motion.div
-            className="h-full rounded-full bg-slate-900"
+            className="h-full rounded-full bg-marca"
             initial={reduzirMovimento ? false : { scaleX: 0 }}
             animate={{ scaleX: ocupacao.percentual / 100 }}
             style={{ transformOrigin: 'left' }}
@@ -68,7 +68,7 @@ export function CalendarioMes({ dias, ocupacao }: Props) {
               title={d.reserva ?? undefined}
               className={[
                 'flex aspect-square items-center justify-center text-xs tabular-nums transition-colors',
-                d.ocupado ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400',
+                d.ocupado ? 'bg-marca text-branco' : 'bg-slate-50 text-slate-400',
                 inicioDeFaixa ? 'rounded-l-lg' : '',
                 fimDeFaixa ? 'rounded-r-lg' : '',
                 !d.ocupado ? 'rounded-lg' : '',
@@ -83,7 +83,7 @@ export function CalendarioMes({ dias, ocupacao }: Props) {
 
       <div className="flex items-center gap-4 text-[11px] text-slate-400">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-slate-900" /> reservado
+          <span className="h-2.5 w-2.5 rounded-sm bg-marca" /> reservado
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-slate-100" /> livre

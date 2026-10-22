@@ -71,14 +71,14 @@ export function CardPendencias({ pendentes, competencia, onLancado }: Props) {
   }
 
   return (
-    <div className="rounded-2xl bg-slate-900 p-5 text-white shadow-sm">
+    <div className="bg-marca-gradiente rounded-2xl p-5 text-branco shadow-lg shadow-marca/20">
       <button onClick={() => setAberto(!aberto)} className="flex w-full items-center justify-between text-left">
-        <span className="text-sm">
+        <span className="text-sm font-medium">
           {pendentes.length === 1
             ? `1 gasto fixo de ${rotuloCompetencia(competencia)} ainda não lançado`
             : `${pendentes.length} gastos fixos de ${rotuloCompetencia(competencia)} ainda não lançados`}
         </span>
-        <span className="text-slate-400">{aberto ? '−' : '+'}</span>
+        <span className="text-branco/70">{aberto ? '−' : '+'}</span>
       </button>
 
       <AnimatePresence initial={false}>
@@ -96,24 +96,24 @@ export function CardPendencias({ pendentes, competencia, onLancado }: Props) {
                   type="checkbox"
                   checked={marcados.has(p.id)}
                   onChange={() => alternar(p.id)}
-                  className="h-4 w-4"
+                  className="h-4 w-4 accent-white"
                 />
                 <span className="flex-1 text-sm">{p.nome}</span>
                 <input
                   inputMode="decimal"
                   value={valores[p.id] ?? ''}
                   onChange={(e) => setValores({ ...valores, [p.id]: e.target.value })}
-                  className="w-28 rounded-lg bg-white/10 px-3 py-2 text-right text-sm tabular-nums outline-none"
+                  className="w-28 rounded-lg bg-black/15 px-3 py-2 text-right text-sm tabular-nums text-branco outline-none placeholder:text-branco/50"
                 />
               </div>
             ))}
 
-            {erro && <p className="text-xs text-amber-300">{erro}</p>}
+            {erro && <p className="text-xs font-medium text-branco">{erro}</p>}
 
             <button
               onClick={confirmar}
               disabled={enviando}
-              className="mt-1 rounded-xl bg-white py-3 text-sm text-slate-900 disabled:opacity-40"
+              className="mt-1 rounded-xl bg-branco py-3 text-sm font-medium text-marca-forte disabled:opacity-40"
             >
               {enviando ? 'Lançando…' : 'Lançar selecionados'}
             </button>

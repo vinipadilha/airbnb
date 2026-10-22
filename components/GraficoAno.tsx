@@ -12,6 +12,13 @@ type Props = {
   onSelecionar: (competencia: string) => void
 }
 
+/**
+ * O gradiente das barras de Ganhos do Airbnb: rosa no topo descendo para
+ * magenta. Constante porque aparece na barra, na legenda e na caixa flutuante,
+ * e as três precisam bater.
+ */
+const GRADIENTE_RECEBIDO = 'linear-gradient(to bottom, #ff385c 0%, #e31c5f 45%, #b4127a 100%)'
+
 /** Escala do eixo: arredonda para cima até um número redondo. */
 function tetoDoEixo(maximo: number): number {
   if (maximo === 0) return 100000
@@ -44,7 +51,7 @@ export function GraficoAno({ meses, selecionado, onSelecionar }: Props) {
             className="absolute inset-x-0 flex items-center gap-2"
             style={{ top: `${(i / (linhas.length - 1)) * 100}%` }}
           >
-            <div className="h-px flex-1 bg-slate-100" />
+            <div className="h-px flex-1 border-t border-dashed border-slate-200" />
             <span className="w-16 shrink-0 text-right text-[10px] tabular-nums text-slate-400">
               {rotuloEixo(v)}
             </span>
@@ -76,14 +83,13 @@ export function GraficoAno({ meses, selecionado, onSelecionar }: Props) {
                   transition={{ duration: 0.35, ease: 'easeOut' }}
                   // Programado é a parte clara no topo; recebido, a escura
                   // embaixo — a mesma leitura do painel do Airbnb.
-                  className={`flex w-full flex-col justify-end overflow-hidden rounded-t-md transition-opacity ${
-                    destacado ? 'opacity-100' : 'opacity-70'
+                  className={`flex w-full flex-col justify-end overflow-hidden rounded-t-lg bg-marca/25 transition-opacity ${
+                    destacado ? 'opacity-100' : 'opacity-60'
                   }`}
-                  style={{ background: '#fbcfe8' }}
                 >
                   <div
-                    className="w-full rounded-t-sm bg-slate-900"
-                    style={{ height: `${fatiaRecebida}%` }}
+                    className="w-full"
+                    style={{ height: `${fatiaRecebida}%`, background: GRADIENTE_RECEBIDO }}
                   />
                 </motion.div>
               </button>
@@ -100,7 +106,7 @@ export function GraficoAno({ meses, selecionado, onSelecionar }: Props) {
               transition={{ duration: 0.12 }}
               // pointer-events-none: a caixa não pode roubar o hover da barra,
               // senão ela pisca enquanto o mouse anda por cima dela.
-              className="pointer-events-none absolute z-10 w-52 rounded-xl bg-slate-900 p-3 text-white shadow-lg"
+              className="pointer-events-none absolute z-10 w-52 rounded-2xl border border-white/10 bg-[#1f1f23] p-3 text-branco shadow-lg"
               style={{
                 bottom: '100%',
                 marginBottom: 8,
@@ -122,7 +128,7 @@ export function GraficoAno({ meses, selecionado, onSelecionar }: Props) {
               <div className="mt-2 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-4 text-xs">
                   <span className="flex items-center gap-1.5 text-slate-300">
-                    <span className="h-2 w-2 rounded-full bg-white" />
+                    <span className="h-2 w-2 rounded-full" style={{ background: GRADIENTE_RECEBIDO }} />
                     Recebido
                   </span>
                   <span className="tabular-nums">
@@ -131,10 +137,7 @@ export function GraficoAno({ meses, selecionado, onSelecionar }: Props) {
                 </div>
                 <div className="flex items-center justify-between gap-4 text-xs">
                   <span className="flex items-center gap-1.5 text-slate-300">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: '#fbcfe8' }}
-                    />
+                    <span className="h-2 w-2 rounded-full bg-marca/40" />
                     Programado
                   </span>
                   <span className="tabular-nums">
@@ -182,10 +185,10 @@ export function GraficoAno({ meses, selecionado, onSelecionar }: Props) {
 
       <div className="flex items-center gap-4 text-[11px] text-slate-400">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-slate-900" /> recebido
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: GRADIENTE_RECEBIDO }} /> recebido
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: '#fbcfe8' }} />{' '}
+          <span className="h-2.5 w-2.5 rounded-sm bg-marca/25" />{' '}
           programado
         </span>
       </div>

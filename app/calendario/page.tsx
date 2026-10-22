@@ -2,9 +2,11 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import { Indicador } from '@/components/Indicador'
 import { ModalLancamento } from '@/components/ModalLancamento'
 import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
+import { ValorAnimado } from '@/components/ValorAnimado'
 import {
   segmentosDaSemana,
   semanasDoMes,
@@ -19,6 +21,13 @@ type Dados = {
   competencia: string
   reservas: Lancamento[]
   ocupacao: Ocupacao
+  faturamento: {
+    recebidoCentavos: number
+    programadoCentavos: number
+    estimadoCentavos: number
+  }
+  diariaMediaCentavos: number
+  checkInsNoMes: number
   categorias: Categoria[]
   configuracoes: Configuracoes
 }
@@ -91,32 +100,49 @@ export default function Calendario() {
         >
           {dados && (
             <>
-              <div className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex flex-col">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                <Indicador
+                  rotulo="Faturamento do mês"
+                  valor={<ValorAnimado centavos={dados.faturamento.estimadoCentavos} />}
+                  tom="marca"
+                  detalhe={
+                    dados.faturamento.programadoCentavos > 0
+                      ? `${formatCentavos(dados.faturamento.recebidoCentavos)} recebido`
+                      : 'tudo recebido'
+                  }
+                />
+                <div className="flex min-w-0 flex-col gap-2 rounded-3xl bg-white p-4 shadow-sm sm:p-5">
                   <span className="text-xs text-slate-500">Ocupação</span>
-                  <span className="text-2xl font-medium tabular-nums">
+                  <span className="text-xl font-semibold tracking-tight tabular-nums">
                     {dados.ocupacao.percentual}%
                   </span>
-                </div>
-                <div className="flex flex-1 flex-col gap-1.5">
                   <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                     <motion.div
-                      className="h-full rounded-full bg-slate-900"
+                      className="bg-marca-gradiente h-full rounded-full"
                       initial={{ scaleX: 0 }}
                       animate={{ scaleX: dados.ocupacao.percentual / 100 }}
                       style={{ transformOrigin: 'left' }}
                       transition={{ duration: 0.4, ease: 'easeOut' }}
                     />
                   </div>
-                  <span className="text-xs text-slate-400">
-                    {dados.ocupacao.noitesOcupadas} de {dados.ocupacao.diasNoMes} noites ·{' '}
-                    {dados.reservas.length}{' '}
-                    {dados.reservas.length === 1 ? 'reserva' : 'reservas'}
-                  </span>
                 </div>
+                <Indicador
+                  rotulo="Diária média"
+                  valor={
+                    dados.diariaMediaCentavos > 0
+                      ? formatCentavos(dados.diariaMediaCentavos)
+                      : '—'
+                  }
+                  detalhe="por noite ocupada"
+                />
+                <Indicador
+                  rotulo="Noites livres"
+                  valor={dados.ocupacao.diasNoMes - dados.ocupacao.noitesOcupadas}
+                  detalhe={`${dados.ocupacao.noitesOcupadas} de ${dados.ocupacao.diasNoMes} ocupadas · ${dados.checkInsNoMes} ${dados.checkInsNoMes === 1 ? 'check-in' : 'check-ins'}`}
+                />
               </div>
 
-              <div className="flex flex-col gap-1 rounded-2xl bg-white p-3 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-1 rounded-3xl bg-white p-3 shadow-sm sm:p-5">
                 <div className="grid grid-cols-7">
                   {SEMANA.map((l, i) => (
                     <span key={i} className="pb-2 text-center text-[11px] text-slate-400">
@@ -174,8 +200,8 @@ export default function Calendario() {
                             title={s.descricao}
                             className={`pointer-events-auto flex items-center overflow-hidden px-2 text-left text-[11px] font-medium transition-opacity hover:opacity-90 ${
                               s.recebido
-                                ? 'bg-slate-900 text-white'
-                                : 'border border-dashed border-slate-400 bg-slate-100 text-slate-600'
+                                ? 'bg-marca-gradiente text-branco shadow-sm'
+                                : 'border border-dashed border-marca/60 bg-marca/10 text-marca'
                             } ${s.comecaAqui ? 'rounded-l-full' : ''} ${
                               s.terminaAqui ? 'rounded-r-full' : ''
                             }`}
@@ -197,10 +223,10 @@ export default function Calendario() {
 
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-slate-400">
                   <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-4 rounded-full bg-slate-900" /> recebido
+                    <span className="bg-marca-gradiente h-2.5 w-4 rounded-full" /> recebido
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-4 rounded-full border border-dashed border-slate-400 bg-slate-100" />{' '}
+                    <span className="h-2.5 w-4 rounded-full border border-dashed border-marca/60 bg-marca/10" />{' '}
                     programado
                   </span>
                   <span className="flex items-center gap-1.5">
@@ -215,7 +241,7 @@ export default function Calendario() {
                     <button
                       key={r.id}
                       onClick={() => abrir(r.id)}
-                      className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"
+                      className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm transition-transform active:scale-[0.99]"
                     >
                       <span className="flex min-w-0 flex-col">
                         <span className="truncate text-sm">{r.descricao}</span>

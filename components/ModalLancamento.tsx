@@ -342,7 +342,7 @@ export function ModalLancamento({
               <button
                 onClick={salvar}
                 disabled={salvando}
-                className="flex-1 rounded-xl bg-slate-900 py-3 text-white disabled:opacity-40"
+                className="bg-marca-gradiente flex-1 rounded-xl py-3 font-medium text-branco transition-transform active:scale-[0.98] disabled:opacity-40"
               >
                 {salvando ? 'Salvando…' : 'Salvar'}
               </button>

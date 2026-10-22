@@ -10,10 +10,25 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Cores da marca. Rausch, o rosa do Airbnb, e um branco que nunca é
+   remapeado: no escuro `--color-white` vira a cor do cartão, então texto
+   sobre o rosa precisa de um branco próprio para continuar branco. */
+@theme {
+  --color-marca: #ff385c;
+  --color-marca-forte: #e31c5f;
+  --color-branco: #ffffff;
+}
+
 :root {
-  --fundo-pagina: #f5f5f4;
+  --fundo-pagina: #f7f7f7;
   --texto-pagina: #0f172a;
   color-scheme: light;
+}
+
+/* O gradiente dos botões do Airbnb. Classe própria porque se repete em todo
+   botão principal e precisa ser idêntico em todos. */
+.bg-marca-gradiente {
+  background-image: linear-gradient(to right, #e61e4d 0%, #e31c5f 50%, #d70466 100%);
 }
 
 /*
@@ -29,21 +44,23 @@
  * do projeto, e qualquer componente novo nasceria quebrado no escuro até
  * alguém lembrar de adicionar. Assim, nasce certo.
  */
+/* Cinza neutro, como o modo escuro do Airbnb — sem o azulado do slate, que
+   brigava com o rosa da marca. */
 .dark {
-  --fundo-pagina: #0b0f17;
-  --texto-pagina: #e8ecf2;
+  --fundo-pagina: #0c0c0e;
+  --texto-pagina: #f4f4f5;
   color-scheme: dark;
 
-  --color-white: #151b26;
-  --color-slate-50: #1a2130;
-  --color-slate-100: #1f2735;
-  --color-slate-200: #2b3445;
-  --color-slate-300: #3c4659;
-  --color-slate-400: #7f8a9c;
-  --color-slate-500: #9aa4b5;
-  --color-slate-600: #b6bfcc;
-  --color-slate-700: #cdd4de;
-  --color-slate-900: #e8ecf2;
+  --color-white: #17171a;
+  --color-slate-50: #1d1d21;
+  --color-slate-100: #222227;
+  --color-slate-200: #2c2c32;
+  --color-slate-300: #3d3d45;
+  --color-slate-400: #85858f;
+  --color-slate-500: #a1a1aa;
+  --color-slate-600: #c4c4cc;
+  --color-slate-700: #d6d6dc;
+  --color-slate-900: #f4f4f5;
 
   /* Avisos: o amarelo-claro do modo claro vira um bloco berrante no escuro. */
   --color-amber-50: #2a2213;
@@ -60,6 +77,18 @@
   --color-red-600: #f87171;
   --color-red-300: #fca5a5;
   --color-sky-600: #38bdf8;
+}
+
+/* Sombra não aparece em fundo escuro: no escuro o cartão ganha um contorno
+   de um pixel quase invisível, que separa as superfícies sem pesar. */
+.dark .shadow-sm {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+.dark .shadow-lg {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 12px 32px rgb(0 0 0 / 0.5);
 }
 
 body {

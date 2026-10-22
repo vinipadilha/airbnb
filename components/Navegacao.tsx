@@ -41,7 +41,9 @@ export function Navegacao() {
             key={item.href}
             href={item.href}
             className={`rounded-xl px-2 py-2 text-xs transition-colors sm:px-4 sm:text-sm ${
-              atual === item.href ? 'bg-slate-900 text-white' : 'text-slate-500'
+              atual === item.href
+                ? 'bg-marca/15 font-medium text-marca'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             {item.rotulo}

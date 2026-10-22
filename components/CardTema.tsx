@@ -13,8 +13,8 @@ export function CardTema() {
   const { tema, mudarTema } = useTema()
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-sm">
-      <span className="text-xs text-slate-500">Aparência</span>
+    <div className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
+      <span className="text-sm font-semibold">Aparência</span>
 
       <div className="flex gap-2 rounded-xl bg-slate-100 p-1">
         {OPCOES.map((op) => (
@@ -22,7 +22,7 @@ export function CardTema() {
             key={op.valor}
             onClick={() => mudarTema(op.valor)}
             className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
-              tema === op.valor ? 'bg-white shadow-sm' : 'text-slate-500'
+              tema === op.valor ? 'bg-white font-medium shadow-sm' : 'text-slate-500'
             }`}
           >
             {op.rotulo}

@@ -229,7 +229,7 @@ export default function Dashboard() {
       <button
         onClick={abrirNovo}
         aria-label="Novo lançamento"
-        className="fixed bottom-20 right-6 z-40 h-14 w-14 rounded-full bg-slate-900 text-2xl text-white shadow-lg transition-transform active:scale-95 sm:bottom-8"
+        className="fixed bottom-20 right-6 z-40 h-14 w-14 bg-marca-gradiente rounded-full text-2xl text-branco shadow-lg shadow-marca/30 transition-transform hover:scale-105 active:scale-95 sm:bottom-8"
       >
         +
       </button>

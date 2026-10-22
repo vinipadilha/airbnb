@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { resumoAnual } from './analise'
+import { ocupacaoAnual, resumoAnual } from './analise'
 import type { Lancamento } from './tipos'
 
 function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' | 'valorCentavos'>): Lancamento {
@@ -71,4 +71,22 @@ test('rótulo curto do mês para o eixo do gráfico', () => {
   assert.equal(r[0].rotulo, 'jan')
   assert.equal(r[8].rotulo, 'set')
   assert.equal(r[11].rotulo, 'dez')
+})
+
+test('reserva paga na virada do ano conta no ano do pagamento', () => {
+  // Check-in 31/12/2026, pago 01/01/2027: é dinheiro de 2027.
+  const virada = lanc({ id: 'v', tipo: 'entrada', data: '2026-12-31', valorCentavos: 50000, origem: 'Airbnb' })
+  virada.dataCaixa = '2027-01-01'
+  assert.equal(resumoAnual([virada], 2026)[11].totalCentavos, 0)
+  assert.equal(resumoAnual([virada], 2027)[0].totalCentavos, 50000)
+})
+
+test('ocupacaoAnual conta noites pela estadia, mês a mês', () => {
+  const r = lanc({ id: 'o', tipo: 'entrada', data: '2026-09-28', valorCentavos: 1, origem: 'Airbnb' })
+  r.dataFim = '2026-10-03'
+  const ano = ocupacaoAnual([r], 2026)
+  assert.equal(ano.length, 12)
+  assert.equal(ano[8].noitesOcupadas, 3) // 28, 29, 30 de setembro
+  assert.equal(ano[9].noitesOcupadas, 2) // 1 e 2 de outubro
+  assert.equal(ano[9].rotulo, 'out')
 })

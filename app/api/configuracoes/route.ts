@@ -35,6 +35,18 @@ export async function PATCH(request: Request) {
     mudancas.nome_socio = corpo.nomeSocio.trim()
   }
 
+  // Nulo desliga o teto e volta à divisão só por porcentagem.
+  if (corpo.limiteSocioCentavos !== undefined) {
+    const l = corpo.limiteSocioCentavos
+    if (l !== null && (!Number.isInteger(l) || (l as number) <= 0)) {
+      return NextResponse.json(
+        { erro: 'O teto precisa ser um valor maior que zero.' },
+        { status: 400 },
+      )
+    }
+    mudancas.limite_socio_centavos = l
+  }
+
   if (corpo.tema !== undefined) {
     if (!ehTema(corpo.tema)) {
       return NextResponse.json({ erro: 'Tema inválido.' }, { status: 400 })

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { diasNaCompetencia, ocupacaoDoMes, somarDias } from '@/lib/calendario'
+import { diariaMediaDoMes, noitesDe, ocupacaoDoMes } from '@/lib/calendario'
+import { competenciaDe } from '@/lib/competencia'
 import { carregarConfiguracoes } from '@/lib/configuracoes'
 import { paraLancamento, type LinhaLancamento } from '@/lib/mapeamento'
 import { clienteServidor } from '@/lib/supabase'
+import { totaisDoMes } from '@/lib/totais'
 
 /**
  * Reservas que ocupam alguma noite do mês.
@@ -17,31 +19,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ erro: 'Competência inválida.' }, { status: 400 })
   }
 
-  const inicio = `${competencia}-01`
-  const depoisDoFim = somarDias(
-    `${competencia}-${String(diasNaCompetencia(competencia)).padStart(2, '0')}`,
-    1,
-  )
-
   const supabase = clienteServidor()
-  const [reservasRes, categoriasRes, config] = await Promise.all([
-    supabase
-      .from('lancamentos')
-      .select('*')
-      .eq('tipo', 'entrada')
-      .not('data_fim', 'is', null)
-      .lt('data', depoisDoFim)
-      .gt('data_fim', inicio)
-      .order('data'),
+  // Busca tudo: os indicadores misturam dois critérios — faturamento pela data
+  // do pagamento, ocupação pela estadia —, e uma reserva entra num e não no
+  // outro na virada do mês. Com poucas centenas de linhas, custa nada.
+  const [lancamentosRes, categoriasRes, config] = await Promise.all([
+    supabase.from('lancamentos').select('*').order('data'),
     supabase.from('categorias').select('*').order('nome'),
     carregarConfiguracoes(),
   ])
 
-  if (reservasRes.error) {
-    return NextResponse.json({ erro: reservasRes.error.message }, { status: 500 })
+  if (lancamentosRes.error) {
+    return NextResponse.json({ erro: lancamentosRes.error.message }, { status: 500 })
   }
 
-  const reservas = (reservasRes.data as LinhaLancamento[]).map(paraLancamento)
+  const todos = (lancamentosRes.data as LinhaLancamento[]).map(paraLancamento)
+  const inicio = `${competencia}-01`
+  const fimDoMes = `${competencia}-31`
+
+  // Reservas com alguma noite no mês: é o que o calendário desenha.
+  const reservas = todos.filter(
+    (l) =>
+      l.tipo === 'entrada' &&
+      noitesDe(l) > 0 &&
+      l.data <= fimDoMes &&
+      (l.dataFim as string) > inicio,
+  )
+
+  const totais = totaisDoMes(todos, competencia)
   const categorias = (categoriasRes.data ?? []).map((c: Record<string, unknown>) => ({
     id: c.id as string,
     nome: c.nome as string,
@@ -54,6 +59,18 @@ export async function GET(request: Request) {
     competencia,
     reservas,
     ocupacao: ocupacaoDoMes(reservas, competencia),
+    // Faturamento em regime de caixa, igual ao Resumo: o que cai neste mês.
+    faturamento: {
+      recebidoCentavos: totais.entradas,
+      programadoCentavos: totais.entradasProgramadas,
+      estimadoCentavos: totais.entradasEstimadas,
+    },
+    // Diária média pelas noites do mês, rateando cada estadia por noite —
+    // é a métrica de diária que o PriceLabs usa.
+    diariaMediaCentavos: diariaMediaDoMes(todos, competencia),
+    checkInsNoMes: todos.filter(
+      (l) => l.tipo === 'entrada' && noitesDe(l) > 0 && competenciaDe(l.data) === competencia,
+    ).length,
     categorias,
     configuracoes: config,
   })

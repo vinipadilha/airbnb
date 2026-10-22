@@ -57,11 +57,11 @@ export default function Ajustes() {
   return (
     <>
       <Navegacao />
-      <h1 className="text-lg font-medium">Ajustes</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Ajustes</h1>
 
       {erro && <p className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">{erro}</p>}
 
-      <div className="flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
         <span className="text-xs text-slate-500">Categorias</span>
         {categorias.filter((c) => !c.arquivada).map((c) => (
           <div key={c.id} className="flex items-center gap-3">
@@ -83,7 +83,7 @@ export default function Ajustes() {
             placeholder="Nova categoria"
             className="flex-1 rounded-xl bg-slate-100 px-4 py-3 text-sm outline-none"
           />
-          <button onClick={adicionar} className="rounded-xl bg-slate-900 px-5 text-white">
+          <button onClick={adicionar} className="bg-marca-gradiente rounded-xl px-5 font-medium text-branco">
             +
           </button>
         </div>
