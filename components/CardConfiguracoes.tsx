@@ -126,10 +126,8 @@ export function CardConfiguracoes({ configuracoes, onSalvo }: Props) {
 
       {modo === 'limite' && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs text-slate-500">
-            {socio} fica com até, por mês
-          </span>
           <CampoValor
+            rotulo={`${socio} fica com até, por mês`}
             valorCentavos={limite}
             onChange={(c) => {
               setLimite(c)
@@ -180,8 +178,8 @@ export function CardConfiguracoes({ configuracoes, onSalvo }: Props) {
                 </span>
                 <div className="flex justify-between text-sm tabular-nums">
                   <span>
-                    <span className="text-slate-400">Você </span>
-                    <span className="font-medium text-marca">{formatCentavos(seu)}</span>
+                    <span className="text-marca">Você </span>
+                    <span className="font-medium">{formatCentavos(seu)}</span>
                   </span>
                   <span>
                     <span className="text-slate-400">{socio} </span>

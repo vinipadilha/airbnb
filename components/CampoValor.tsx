@@ -7,9 +7,11 @@ type Props = {
   valorCentavos: number | null
   onChange: (centavos: number | null) => void
   autoFocus?: boolean
+  /** Rótulo acima do campo. Padrão: "Valor". */
+  rotulo?: string
 }
 
-export function CampoValor({ valorCentavos, onChange, autoFocus }: Props) {
+export function CampoValor({ valorCentavos, onChange, autoFocus, rotulo = 'Valor' }: Props) {
   const [texto, setTexto] = useState(
     valorCentavos === null ? '' : formatCentavos(valorCentavos).replace('R$', '').trim(),
   )
@@ -23,7 +25,7 @@ export function CampoValor({ valorCentavos, onChange, autoFocus }: Props) {
 
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs text-slate-500">Valor</span>
+      <span className="text-xs text-slate-500">{rotulo}</span>
       <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-3">
         <span className="text-slate-400">R$</span>
         <input
