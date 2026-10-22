@@ -21,17 +21,16 @@ export type TotalCategoria = {
 }
 
 function doMes(lancamentos: Lancamento[], competencia: string): Lancamento[] {
-  return lancamentos.filter((l) => competenciaDe(l.data) === competencia)
+  return lancamentos.filter((l) => competenciaDe(l.dataCaixa) === competencia)
 }
 
 /**
  * Totais da competência, em regime de caixa.
  *
- * A receita da reserva pertence inteira ao mês da data registrada, mesmo que a
- * estadia atravesse a virada do mês: o Airbnb paga uma vez só, no dia seguinte
- * ao check-in. Ratear por noite espalharia o dinheiro por meses em que ele
- * nunca entrou, e aí nenhum mês bateria com o extrato do banco — que é contra
- * o que estes números são conferidos.
+ * Tudo é somado pela `dataCaixa` — quando o dinheiro se move —, não pela data
+ * da estadia. O Airbnb paga uma vez só, em D+1 do check-in: uma reserva que
+ * começa em 31/10 pertence a novembro. É assim que o mês fecha com o extrato
+ * do banco, que é contra o que estes números são conferidos.
  */
 export function totaisDoMes(lancamentos: Lancamento[], competencia: string): TotaisMes {
   let entradas = 0
@@ -42,10 +41,10 @@ export function totaisDoMes(lancamentos: Lancamento[], competencia: string): Tot
     if (l.tipo === 'entrada') {
       // Programado é previsão, não dinheiro: fica num balde à parte para não
       // inflar o saldo com reserva que o hóspede ainda pode cancelar.
-      if (competenciaDe(l.data) !== competencia) continue
+      if (competenciaDe(l.dataCaixa) !== competencia) continue
       if (l.recebido) entradas += l.valorCentavos
       else entradasProgramadas += l.valorCentavos
-    } else if (competenciaDe(l.data) === competencia) {
+    } else if (competenciaDe(l.dataCaixa) === competencia) {
       saidas += l.valorCentavos
     }
   }

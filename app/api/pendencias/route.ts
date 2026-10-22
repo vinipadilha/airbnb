@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       .insert({
         tipo: 'saida',
         data: item.data,
+        data_caixa: item.data,
         valor_centavos: item.valorCentavos,
         descricao: fixo.nome,
         categoria_id: fixo.categoria_id,

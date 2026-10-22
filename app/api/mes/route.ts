@@ -58,9 +58,10 @@ export async function GET(request: Request) {
     }),
   )
 
-  // Regime de caixa: o lançamento pertence ao mês da sua data, mesmo que a
-  // estadia atravesse a virada. O Airbnb paga uma vez, após o check-in.
-  const doMes = todos.filter((l) => competenciaDe(l.data) === competencia)
+  // Regime de caixa: o lançamento pertence ao mês em que o dinheiro se move,
+  // não ao da estadia. Reserva com check-in em 31/10 é paga em 01/11 e
+  // aparece em novembro.
+  const doMes = todos.filter((l) => competenciaDe(l.dataCaixa) === competencia)
 
   return NextResponse.json({
     competencia,

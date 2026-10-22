@@ -1,3 +1,4 @@
+import { dataDePagamento } from '@/lib/calendario'
 import type { EntradaLancamento } from '@/lib/mapeamento'
 
 /** Valida o corpo recebido. Devolve o lançamento ou a mensagem de erro. */
@@ -20,6 +21,12 @@ export function validarCorpo(corpo: unknown):
   }
   if (c.tipo === 'entrada' && (typeof c.origem !== 'string' || c.origem.trim() === '')) {
     return { ok: false, erro: 'Entrada precisa de origem.' }
+  }
+  if (
+    c.dataCaixa !== undefined &&
+    (typeof c.dataCaixa !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(c.dataCaixa))
+  ) {
+    return { ok: false, erro: 'Data de pagamento inválida.' }
   }
   if (c.pagoPor !== undefined && c.pagoPor !== 'voce' && c.pagoPor !== 'socio') {
     return { ok: false, erro: 'Quem pagou é inválido.' }
@@ -49,6 +56,13 @@ export function validarCorpo(corpo: unknown):
       tipo: c.tipo,
       data: c.data,
       dataFim: typeof c.dataFim === 'string' ? c.dataFim : null,
+      // Sem dataCaixa explícita, entrada cai em D+1 e saída no próprio dia.
+      dataCaixa:
+        typeof c.dataCaixa === 'string'
+          ? c.dataCaixa
+          : c.tipo === 'entrada'
+            ? dataDePagamento(c.data)
+            : c.data,
       valorCentavos: c.valorCentavos as number,
       descricao: typeof c.descricao === 'string' ? c.descricao : '',
       categoriaId: typeof c.categoriaId === 'string' ? c.categoriaId : null,

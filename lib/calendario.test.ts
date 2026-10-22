@@ -7,6 +7,8 @@ import {
   noitesNoMes,
   ocupacaoDoMes,
   receitaNoMes,
+  segmentosDaSemana,
+  semanasDoMes,
 } from './calendario'
 import type { Lancamento } from './tipos'
 
@@ -15,6 +17,7 @@ function entrada(
 ): Lancamento {
   return {
     tipo: 'entrada',
+    dataCaixa: p.data,
     descricao: 'Reserva',
     categoriaId: null,
     origem: 'Airbnb',
@@ -37,7 +40,7 @@ test('noitesDe conta a diferença entre check-in e check-out', () => {
 
 test('noitesDe de saída é zero', () => {
   const saida: Lancamento = {
-    id: 's', tipo: 'saida', data: '2026-09-05', dataFim: null, valorCentavos: 9800,
+    id: 's', tipo: 'saida', data: '2026-09-05', dataCaixa: '2026-09-05', dataFim: null, valorCentavos: 9800,
     descricao: 'Internet', categoriaId: 'c', origem: null, hospedes: null,
     recebido: true, pagoPor: 'voce', criadoEm: '',
   }
@@ -143,4 +146,63 @@ test('diariaMediaDoMes divide a receita pelas noites do mês', () => {
 
 test('diariaMediaDoMes é zero quando não houve noite', () => {
   assert.equal(diariaMediaDoMes([], '2026-07'), 0)
+})
+
+test('semanasDoMes começa no dia da semana certo e fecha em sábado', () => {
+  // Outubro de 2026 começa numa quinta-feira (coluna 4).
+  const semanas = semanasDoMes('2026-10')
+  assert.equal(semanas[0][3], null)
+  assert.equal(semanas[0][4], '2026-10-01')
+  assert.equal(semanas.every((s) => s.length === 7), true)
+  const ultima = semanas[semanas.length - 1]
+  assert.equal(ultima.includes('2026-10-31'), true)
+})
+
+test('reserva dentro de uma semana vira um pedaço com as duas pontas', () => {
+  // 05/10 (segunda) a 09/10: noites de 05, 06, 07 e 08.
+  const r = entrada({ id: 'x', data: '2026-10-05', dataFim: '2026-10-09', valorCentavos: 54389 })
+  const semana = semanasDoMes('2026-10')[1]
+  const [s] = segmentosDaSemana([r], semana)
+  assert.equal(semana[s.colInicio], '2026-10-05')
+  assert.equal(semana[s.colFim - 1], '2026-10-08')
+  assert.equal(s.comecaAqui, true)
+  assert.equal(s.terminaAqui, true)
+})
+
+test('o dia do check-out fica livre para o próximo hóspede', () => {
+  const r = entrada({ id: 'x', data: '2026-10-05', dataFim: '2026-10-09', valorCentavos: 1 })
+  const semana = semanasDoMes('2026-10')[1]
+  const [s] = segmentosDaSemana([r], semana)
+  assert.notEqual(semana[s.colFim - 1], '2026-10-09')
+})
+
+test('estadia que atravessa sábado quebra em dois pedaços', () => {
+  // 09/10 (sexta) a 12/10 (segunda): noites de 09, 10 e 11.
+  const r = entrada({ id: 'x', data: '2026-10-09', dataFim: '2026-10-12', valorCentavos: 1 })
+  const semanas = semanasDoMes('2026-10')
+  const a = segmentosDaSemana([r], semanas[1])
+  const b = segmentosDaSemana([r], semanas[2])
+  assert.equal(a.length, 1)
+  assert.equal(b.length, 1)
+  // O primeiro pedaço tem o check-in mas não termina; o segundo, o contrário.
+  assert.equal(a[0].comecaAqui, true)
+  assert.equal(a[0].terminaAqui, false)
+  assert.equal(b[0].comecaAqui, false)
+  assert.equal(b[0].terminaAqui, true)
+})
+
+test('reservas encostadas no mesmo dia dividem a faixa', () => {
+  // Uma sai em 09/10, outra entra em 09/10: troca no mesmo dia.
+  const sai = entrada({ id: 'a', data: '2026-10-05', dataFim: '2026-10-09', valorCentavos: 1 })
+  const entra = entrada({ id: 'b', data: '2026-10-09', dataFim: '2026-10-11', valorCentavos: 1 })
+  const segs = segmentosDaSemana([sai, entra], semanasDoMes('2026-10')[1])
+  assert.equal(segs.length, 2)
+  assert.equal(segs.every((s) => s.faixa === 0), true)
+})
+
+test('reservas sobrepostas por erro descem para outra faixa', () => {
+  const a = entrada({ id: 'a', data: '2026-10-05', dataFim: '2026-10-09', valorCentavos: 1 })
+  const b = entrada({ id: 'b', data: '2026-10-07', dataFim: '2026-10-10', valorCentavos: 1 })
+  const segs = segmentosDaSemana([a, b], semanasDoMes('2026-10')[1])
+  assert.deepEqual(segs.map((s) => s.faixa).sort(), [0, 1])
 })

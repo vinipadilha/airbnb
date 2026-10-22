@@ -42,7 +42,7 @@ export function resumoAnual(lancamentos: Lancamento[], ano: number): MesDoAno[] 
   const porCompetencia = new Map(meses.map((m) => [m.competencia, m]))
 
   for (const l of lancamentos) {
-    const mes = porCompetencia.get(competenciaDe(l.data))
+    const mes = porCompetencia.get(competenciaDe(l.dataCaixa))
     if (mes === undefined) continue
 
     if (l.tipo === 'saida') {

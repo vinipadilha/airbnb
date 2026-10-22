@@ -1,13 +1,70 @@
 @import "tailwindcss";
 
+/* O tema escuro é ligado por classe no <html>, não pela preferência do
+   sistema direto: o usuário escolhe entre claro, escuro ou seguir o sistema,
+   e a escolha fica salva. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+:root {
+  --fundo-pagina: #f5f5f4;
+  --texto-pagina: #0f172a;
+  color-scheme: light;
+}
+
+/*
+ * Modo escuro por troca de paleta, não por classe em cada componente.
+ *
+ * No Tailwind v4 toda cor é uma variável CSS (`bg-white` lê `--color-white`).
+ * Redefinir os neutros aqui inverte o app inteiro de uma vez: o cartão branco
+ * vira superfície escura, o texto quase preto vira quase branco, e o botão
+ * `bg-slate-900 text-white` vira claro com texto escuro — que é exatamente o
+ * botão primário invertido que se espera no escuro.
+ *
+ * A alternativa seria um `dark:` em cada uma das centenas de classes neutras
+ * do projeto, e qualquer componente novo nasceria quebrado no escuro até
+ * alguém lembrar de adicionar. Assim, nasce certo.
+ */
+.dark {
+  --fundo-pagina: #0b0f17;
+  --texto-pagina: #e8ecf2;
+  color-scheme: dark;
+
+  --color-white: #151b26;
+  --color-slate-50: #1a2130;
+  --color-slate-100: #1f2735;
+  --color-slate-200: #2b3445;
+  --color-slate-300: #3c4659;
+  --color-slate-400: #7f8a9c;
+  --color-slate-500: #9aa4b5;
+  --color-slate-600: #b6bfcc;
+  --color-slate-700: #cdd4de;
+  --color-slate-900: #e8ecf2;
+
+  /* Avisos: o amarelo-claro do modo claro vira um bloco berrante no escuro. */
+  --color-amber-50: #2a2213;
+  --color-amber-100: #3a2e14;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #f2b84b;
+  --color-amber-600: #f2b84b;
+  --color-amber-700: #f5c870;
+  --color-amber-900: #f8dfa6;
+
+  /* Verde e vermelho levemente mais claros, para manter contraste no escuro. */
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-red-600: #f87171;
+  --color-red-300: #fca5a5;
+  --color-sky-600: #38bdf8;
+}
+
 body {
-  background-color: #f5f5f4;
-  color: #0f172a;
+  background-color: var(--fundo-pagina);
+  color: var(--texto-pagina);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 

@@ -2,8 +2,8 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
-import { hojeEmSaoPaulo } from '@/lib/competencia'
-import { noitesEntre, somarDias } from '@/lib/calendario'
+import { competenciaDe, hojeEmSaoPaulo } from '@/lib/competencia'
+import { dataDePagamento, noitesEntre, somarDias } from '@/lib/calendario'
 import type { Categoria, Lancamento, PagoPor, TipoLancamento } from '@/lib/tipos'
 import { formatCentavos } from '@/lib/dinheiro'
 import { CampoValor } from './CampoValor'
@@ -49,6 +49,10 @@ export function ModalLancamento({
   const [hospedes, setHospedes] = useState(lancamento?.hospedes?.toString() ?? '')
   const [recebido, setRecebido] = useState(lancamento?.recebido ?? true)
   const [pagoPor, setPagoPor] = useState<PagoPor>(lancamento?.pagoPor ?? 'voce')
+  const [dataCaixa, setDataCaixa] = useState(
+    lancamento?.dataCaixa ?? dataDePagamento(lancamento?.data ?? hojeEmSaoPaulo()),
+  )
+  const [editandoCaixa, setEditandoCaixa] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -82,6 +86,7 @@ export function ModalLancamento({
       hospedes: tipo === 'entrada' && hospedes !== '' ? Number(hospedes) : null,
       recebido: tipo === 'entrada' ? recebido : true,
       pagoPor: tipo === 'saida' ? pagoPor : 'voce',
+      dataCaixa: tipo === 'entrada' ? dataCaixa : data,
     }
 
     const resposta = await fetch(
@@ -167,6 +172,9 @@ export function ModalLancamento({
                   onChange={(inicio, fim) => {
                     setData(inicio)
                     setDataFim(fim)
+                    // Acompanha o check-in enquanto ninguém mexeu na data de
+                    // pagamento à mão; quem ajustou manda.
+                    if (!editandoCaixa) setDataCaixa(dataDePagamento(inicio))
                   }}
                 />
                 {valorCentavos !== null && dataFim > data && (
@@ -177,6 +185,33 @@ export function ModalLancamento({
                     por noite
                   </span>
                 )}
+
+                {/* O Airbnb paga em D+1, e é esta data que decide o mês do
+                    lançamento. Reserva de 31/10 cai em novembro. */}
+                <div className="flex flex-col gap-2 rounded-xl bg-slate-50 p-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs text-slate-500">Pagamento cai em</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditandoCaixa(!editandoCaixa)}
+                      className="text-xs text-slate-500 underline decoration-slate-300 underline-offset-4"
+                    >
+                      {rotuloCurto(dataCaixa)}
+                      {competenciaDe(dataCaixa) !== competenciaDe(data) && (
+                        <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+                          outro mês
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  {editandoCaixa ? (
+                    <SeletorData valor={dataCaixa} onChange={setDataCaixa} />
+                  ) : (
+                    <span className="text-[11px] text-slate-400">
+                      Um dia depois do check-in. Toque na data para mudar.
+                    </span>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-2">

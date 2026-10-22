@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { CardConfiguracoes } from '@/components/CardConfiguracoes'
+import { CardTema } from '@/components/CardTema'
 import { ImportarCsv } from '@/components/ImportarCsv'
 import { Navegacao } from '@/components/Navegacao'
 import type { Categoria, Configuracoes } from '@/lib/tipos'
@@ -85,6 +86,8 @@ export default function Ajustes() {
           </button>
         </div>
       </div>
+
+      <CardTema />
 
       {configuracoes && (
         <CardConfiguracoes configuracoes={configuracoes} onSalvo={setConfiguracoes} />

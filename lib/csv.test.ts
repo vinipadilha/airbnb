@@ -106,7 +106,7 @@ test('lança quando o texto está vazio', () => {
 test('marcarDuplicados acusa linha já existente no banco', () => {
   const existentes = [
     {
-      id: '1', tipo: 'entrada', data: '2026-09-03', dataFim: null,
+      id: '1', tipo: 'entrada', data: '2026-09-03', dataFim: null, dataCaixa: '2026-09-04',
       valorCentavos: 50000, descricao: 'R', categoriaId: null, origem: 'Airbnb',
       hospedes: null, recebido: true, pagoPor: 'voce', criadoEm: '',
     } satisfies Lancamento,

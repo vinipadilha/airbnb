@@ -1,7 +1,8 @@
 import { clienteServidor } from './supabase'
+import { ehTema } from './tema'
 import type { Configuracoes } from './tipos'
 
-const PADRAO: Configuracoes = { percentualGestao: 12, nomeSocio: 'Sócio' }
+const PADRAO: Configuracoes = { percentualGestao: 12, nomeSocio: 'Sócio', tema: 'sistema' }
 
 /**
  * Lê a configuração única do negócio.
@@ -13,7 +14,7 @@ const PADRAO: Configuracoes = { percentualGestao: 12, nomeSocio: 'Sócio' }
 export async function carregarConfiguracoes(): Promise<Configuracoes> {
   const { data, error } = await clienteServidor()
     .from('configuracoes')
-    .select('percentual_gestao, nome_socio')
+    .select('*')
     .eq('id', 1)
     .maybeSingle()
 
@@ -22,5 +23,7 @@ export async function carregarConfiguracoes(): Promise<Configuracoes> {
   return {
     percentualGestao: data.percentual_gestao as number,
     nomeSocio: data.nome_socio as string,
+    // Sem a migração 008 a coluna não existe: segue o sistema.
+    tema: ehTema(data.tema) ? data.tema : 'sistema',
   }
 }

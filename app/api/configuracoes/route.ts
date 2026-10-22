@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { carregarConfiguracoes } from '@/lib/configuracoes'
+import { ehTema } from '@/lib/tema'
 import { clienteServidor } from '@/lib/supabase'
 
 export async function GET() {
@@ -32,6 +33,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ erro: 'Informe o nome do sócio.' }, { status: 400 })
     }
     mudancas.nome_socio = corpo.nomeSocio.trim()
+  }
+
+  if (corpo.tema !== undefined) {
+    if (!ehTema(corpo.tema)) {
+      return NextResponse.json({ erro: 'Tema inválido.' }, { status: 400 })
+    }
+    mudancas.tema = corpo.tema
   }
 
   if (Object.keys(mudancas).length === 0) {

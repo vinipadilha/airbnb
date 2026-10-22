@@ -4,6 +4,7 @@ export type LinhaLancamento = {
   id: string
   tipo: string
   data: string
+  data_caixa: string
   data_fim: string | null
   valor_centavos: number
   descricao: string
@@ -27,6 +28,9 @@ export function paraLancamento(linha: LinhaLancamento): Lancamento {
     id: linha.id,
     tipo: linha.tipo === 'entrada' ? 'entrada' : 'saida',
     data: linha.data,
+    // Banco sem a migração 007 não tem a coluna: cair na data da estadia
+    // preserva o comportamento anterior em vez de quebrar a tela.
+    dataCaixa: linha.data_caixa ?? linha.data,
     dataFim: linha.data_fim,
     valorCentavos: linha.valor_centavos,
     descricao: linha.descricao,
@@ -51,6 +55,8 @@ export function paraLinhaLancamento(entrada: EntradaLancamento) {
   return {
     tipo: entrada.tipo,
     data: entrada.data,
+    // Saída não tem defasagem: o gasto acontece quando acontece.
+    data_caixa: ehEntrada ? entrada.dataCaixa : entrada.data,
     data_fim: ehEntrada ? entrada.dataFim : null,
     valor_centavos: entrada.valorCentavos,
     descricao: entrada.descricao,

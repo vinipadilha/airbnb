@@ -42,7 +42,7 @@ export function calcularRateio(
   let gastosPagosPeloSocioCentavos = 0
 
   for (const l of lancamentos) {
-    if (competenciaDe(l.data) !== competencia) continue
+    if (competenciaDe(l.dataCaixa) !== competencia) continue
 
     if (l.tipo === 'entrada') {
       // Só divide o que entrou de verdade: repassar sobre reserva programada

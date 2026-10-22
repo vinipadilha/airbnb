@@ -10,7 +10,7 @@ const categorias = [limpeza]
 
 function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' | 'valorCentavos'>): Lancamento {
   return {
-    dataFim: null, descricao: '', categoriaId: null, origem: null,
+    dataFim: null, dataCaixa: p.data, descricao: '', categoriaId: null, origem: null,
     hospedes: null, recebido: true, pagoPor: 'voce', criadoEm: '', ...p,
   }
 }

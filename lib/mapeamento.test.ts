@@ -7,6 +7,7 @@ test('paraLancamento converte entrada do banco', () => {
     id: 'abc',
     tipo: 'entrada',
     data: '2026-09-03',
+    data_caixa: '2026-09-04',
     data_fim: '2026-09-06',
     valor_centavos: 50000,
     descricao: 'Reserva 3 noites',
@@ -21,6 +22,7 @@ test('paraLancamento converte entrada do banco', () => {
     id: 'abc',
     tipo: 'entrada',
     data: '2026-09-03',
+    dataCaixa: '2026-09-04',
     dataFim: '2026-09-06',
     valorCentavos: 50000,
     descricao: 'Reserva 3 noites',
@@ -37,6 +39,7 @@ test('paraLinhaLancamento zera os campos do outro tipo numa saída', () => {
   const linha = paraLinhaLancamento({
     tipo: 'saida',
     data: '2026-09-05',
+    dataCaixa: '2026-09-10',
     dataFim: '2026-09-08',
     valorCentavos: 9800,
     descricao: 'Internet',
@@ -49,6 +52,7 @@ test('paraLinhaLancamento zera os campos do outro tipo numa saída', () => {
   assert.deepEqual(linha, {
     tipo: 'saida',
     data: '2026-09-05',
+    data_caixa: '2026-09-05',
     data_fim: null,
     valor_centavos: 9800,
     descricao: 'Internet',
@@ -64,6 +68,7 @@ test('paraLinhaLancamento zera a categoria numa entrada', () => {
   const linha = paraLinhaLancamento({
     tipo: 'entrada',
     data: '2026-09-03',
+    dataCaixa: '2026-09-10',
     dataFim: '2026-09-06',
     valorCentavos: 50000,
     descricao: 'Reserva',
@@ -81,6 +86,7 @@ test('entrada programada mantém recebido falso na ida para o banco', () => {
   const linha = paraLinhaLancamento({
     tipo: 'entrada',
     data: '2026-10-10',
+    dataCaixa: '2026-09-10',
     dataFim: '2026-10-13',
     valorCentavos: 60000,
     descricao: 'Reserva futura',
@@ -97,6 +103,7 @@ test('saída nunca vai programada para o banco', () => {
   const linha = paraLinhaLancamento({
     tipo: 'saida',
     data: '2026-10-10',
+    dataCaixa: '2026-09-10',
     dataFim: null,
     valorCentavos: 5000,
     descricao: 'Mercado',
@@ -113,6 +120,7 @@ test('saída guarda quem pagou', () => {
   const linha = paraLinhaLancamento({
     tipo: 'saida',
     data: '2026-09-10',
+    dataCaixa: '2026-09-10',
     dataFim: null,
     valorCentavos: 60000,
     descricao: 'Condomínio',
@@ -129,6 +137,7 @@ test('entrada é sempre recebida por você, mesmo se marcarem outra coisa', () =
   const linha = paraLinhaLancamento({
     tipo: 'entrada',
     data: '2026-09-10',
+    dataCaixa: '2026-09-10',
     dataFim: '2026-09-12',
     valorCentavos: 60000,
     descricao: 'Reserva',

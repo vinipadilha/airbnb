@@ -7,6 +7,7 @@ function lanc(p: Partial<Lancamento> & Pick<Lancamento, 'id' | 'tipo' | 'data' |
   return {
     descricao: 'x',
     dataFim: null,
+    dataCaixa: p.data,
     recebido: true,
     categoriaId: null,
     origem: null,
@@ -130,4 +131,16 @@ test('saidasPorCategoria agrupa saídas sem categoria sob null', () => {
   assert.deepEqual(saidasPorCategoria(orfa, '2026-09'), [
     { categoriaId: null, totalCentavos: 700 },
   ])
+})
+
+test('reserva paga em D+1 pertence ao mês do pagamento', () => {
+  // Check-in em 31/10, pagamento em 01/11: outubro não vê esse dinheiro.
+  const viradaDeMes = lanc({
+    id: 'V', tipo: 'entrada', data: '2026-10-31', valorCentavos: 83995, origem: 'Airbnb',
+  })
+  viradaDeMes.dataCaixa = '2026-11-01'
+  viradaDeMes.dataFim = '2026-11-03'
+
+  assert.equal(totaisDoMes([viradaDeMes], '2026-10').entradas, 0)
+  assert.equal(totaisDoMes([viradaDeMes], '2026-11').entradas, 83995)
 })

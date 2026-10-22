@@ -24,8 +24,15 @@ export type Categoria = {
 export type Lancamento = {
   id: string
   tipo: TipoLancamento
-  /** YYYY-MM-DD. Em entradas, é o check-in. */
+  /** YYYY-MM-DD. Em entradas, é o check-in da estadia. */
   data: string
+  /**
+   * YYYY-MM-DD. Quando o dinheiro entra ou sai — é o que os totais usam.
+   *
+   * O Airbnb paga em D+1, então uma reserva com check-in em 31/10 só vira
+   * dinheiro em 01/11 e pertence a novembro. Em saídas é igual à data.
+   */
+  dataCaixa: string
   /** YYYY-MM-DD. Check-out da reserva; null em saídas e em receitas sem estadia. */
   dataFim: string | null
   valorCentavos: number
@@ -69,6 +76,7 @@ export type Configuracoes = {
   /** Quanto do líquido fica com você, de 0 a 100. O sócio fica com o resto. */
   percentualGestao: number
   nomeSocio: string
+  tema: 'claro' | 'escuro' | 'sistema'
 }
 
 export type Repasse = {

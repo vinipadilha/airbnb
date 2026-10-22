@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { somarDias } from '@/lib/calendario'
+import { dataDePagamento, somarDias } from '@/lib/calendario'
 import { clienteServidor } from '@/lib/supabase'
 
 type LinhaParaGravar = {
@@ -41,6 +41,8 @@ export async function POST(request: Request) {
       linhas.map((l) => ({
         tipo: 'entrada',
         data: l.data,
+        // Importação é de reservas: o Airbnb paga em D+1 do check-in.
+        data_caixa: dataDePagamento(l.data),
         // O CSV traz noites; o banco guarda o check-out. Sem noites, a entrada
         // fica sem período e conta inteira no mês da data.
         data_fim: l.noites && l.noites > 0 ? somarDias(l.data, l.noites) : null,
