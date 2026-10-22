@@ -1,6 +1,45 @@
 import { competenciaDe } from './competencia'
 import type { Categoria, Lancamento, Repasse } from './tipos'
 
+/**
+ * Como o líquido do mês é dividido entre você e o sócio.
+ *
+ * Dois combinados cabem neste formato:
+ *   - só porcentagem: `limiteSocioCentavos` nulo, e `percentualSeu` vale para
+ *     o líquido inteiro;
+ *   - com limite: o sócio fica no máximo com `limiteSocioCentavos` por mês, e
+ *     tudo o que passar disso é seu. Abaixo do limite, `percentualSeu` ainda
+ *     vale — com 0% os primeiros R$ 3.000 são todos dele; com 20%, ele fica
+ *     com 80% dos primeiros R$ 3.000.
+ */
+export type RegraDivisao = {
+  /** Sua porcentagem, de 0 a 100, na parte do líquido abaixo do limite. */
+  percentualSeu: number
+  /** Teto mensal do sócio, em centavos. Nulo = sem teto. */
+  limiteSocioCentavos: number | null
+}
+
+/**
+ * Divide um líquido segundo a regra. Devolve a sua parte; a do sócio é o
+ * resto, por subtração, para as duas somarem o líquido sem centavo órfão.
+ */
+export function dividirLiquido(liquidoCentavos: number, regra: RegraDivisao): number {
+  const limite = regra.limiteSocioCentavos
+
+  // Sem teto, a porcentagem vale para tudo — inclusive prejuízo, que é
+  // dividido na mesma proporção.
+  if (limite === null) {
+    return Math.round((liquidoCentavos * regra.percentualSeu) / 100)
+  }
+
+  // Com teto: a porcentagem vale só até o limite; o excedente é todo seu.
+  // Num mês no prejuízo não há excedente, e a perda segue a porcentagem.
+  const abaixoDoLimite = Math.min(liquidoCentavos, limite)
+  const acimaDoLimite = Math.max(0, liquidoCentavos - limite)
+
+  return Math.round((abaixoDoLimite * regra.percentualSeu) / 100) + acimaDoLimite
+}
+
 export type Rateio = {
   entradasCentavos: number
   /** Só gastos operacionais: categorias marcadas como `entraNoRateio`. */
@@ -31,7 +70,7 @@ export function calcularRateio(
   categorias: Categoria[],
   repasses: Repasse[],
   competencia: string,
-  percentualSeu: number,
+  regra: RegraDivisao,
 ): Rateio {
   const foraDoRateio = new Set(
     categorias.filter((c) => !c.entraNoRateio).map((c) => c.id),
@@ -67,9 +106,7 @@ export function calcularRateio(
 
   const liquidoCentavos = entradasCentavos - gastosCentavos
 
-  // Arredonda só a sua parte e deriva a do sócio por subtração: assim as duas
-  // somam exatamente o líquido, sem centavo órfão.
-  const suaParteCentavos = Math.round((liquidoCentavos * percentualSeu) / 100)
+  const suaParteCentavos = dividirLiquido(liquidoCentavos, regra)
   const parteDoSocioCentavos = liquidoCentavos - suaParteCentavos
 
   return {

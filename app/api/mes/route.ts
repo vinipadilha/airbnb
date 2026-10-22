@@ -79,7 +79,10 @@ export async function GET(request: Request) {
       categorias,
       repasses,
       competencia,
-      config.percentualGestao,
+      {
+        percentualSeu: config.percentualGestao,
+        limiteSocioCentavos: config.limiteSocioCentavos,
+      },
     ),
     configuracoes: config,
   })

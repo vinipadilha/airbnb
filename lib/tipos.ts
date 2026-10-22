@@ -77,6 +77,8 @@ export type Configuracoes = {
   percentualGestao: number
   nomeSocio: string
   tema: 'claro' | 'escuro' | 'sistema'
+  /** Teto mensal do sócio; acima dele o líquido é seu. Nulo = só porcentagem. */
+  limiteSocioCentavos: number | null
 }
 
 export type Repasse = {

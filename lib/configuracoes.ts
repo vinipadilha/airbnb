@@ -2,7 +2,7 @@ import { clienteServidor } from './supabase'
 import { ehTema } from './tema'
 import type { Configuracoes } from './tipos'
 
-const PADRAO: Configuracoes = { percentualGestao: 12, nomeSocio: 'Sócio', tema: 'sistema' }
+const PADRAO: Configuracoes = { percentualGestao: 12, nomeSocio: 'Sócio', tema: 'sistema', limiteSocioCentavos: null }
 
 /**
  * Lê a configuração única do negócio.
@@ -25,5 +25,8 @@ export async function carregarConfiguracoes(): Promise<Configuracoes> {
     nomeSocio: data.nome_socio as string,
     // Sem a migração 008 a coluna não existe: segue o sistema.
     tema: ehTema(data.tema) ? data.tema : 'sistema',
+    // Sem a migração 009 a coluna não existe: só porcentagem, como antes.
+    limiteSocioCentavos:
+      typeof data.limite_socio_centavos === 'number' ? data.limite_socio_centavos : null,
   }
 }
