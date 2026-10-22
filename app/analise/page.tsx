@@ -1,13 +1,14 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GraficoAno } from '@/components/GraficoAno'
 import { Navegacao } from '@/components/Navegacao'
 import { ValorAnimado } from '@/components/ValorAnimado'
 import type { MesDoAno } from '@/lib/analise'
 import { competenciaAtual, rotuloCompetencia } from '@/lib/competencia'
 import { formatCentavos } from '@/lib/dinheiro'
+import { buscarJson } from '@/lib/rede'
 
 type TotaisAno = {
   recebidoCentavos: number
@@ -25,20 +26,25 @@ export default function Analise() {
   const [dados, setDados] = useState<Resposta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
-  const carregar = useCallback(async () => {
-    setErro(null)
-    try {
-      const resposta = await fetch(`/api/analise?ano=${ano}`)
-      if (!resposta.ok) throw new Error('falhou')
-      setDados((await resposta.json()) as Resposta)
-    } catch {
-      setErro('Não foi possível carregar.')
+  useEffect(() => {
+    // `ativo` descarta respostas velhas: trocando de ano rápido, a resposta
+    // do ano anterior pode chegar depois e sobrescrever a tela com os números
+    // errados. O setState acontece só no callback da promessa, nunca no corpo
+    // do efeito.
+    let ativo = true
+    buscarJson<Resposta>(`/api/analise?ano=${ano}`)
+      .then((d) => {
+        if (!ativo) return
+        setDados(d)
+        setErro(null)
+      })
+      .catch(() => {
+        if (ativo) setErro('Não foi possível carregar.')
+      })
+    return () => {
+      ativo = false
     }
   }, [ano])
-
-  useEffect(() => {
-    void carregar()
-  }, [carregar])
 
   function mudarAno(delta: 1 | -1) {
     const novo = ano + delta

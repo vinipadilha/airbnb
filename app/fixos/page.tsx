@@ -1,10 +1,11 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ModalGastoFixo } from '@/components/ModalGastoFixo'
 import { Navegacao } from '@/components/Navegacao'
 import { formatCentavos } from '@/lib/dinheiro'
+import { buscarJson } from '@/lib/rede'
 import type { Categoria, GastoFixo } from '@/lib/tipos'
 
 export default function Fixos() {
@@ -20,37 +21,35 @@ export default function Fixos() {
   // props só na primeira renderização.
   const [aberturas, setAberturas] = useState(0)
 
-  const carregar = useCallback(async () => {
-    setErro(null)
-    try {
-      const [fixosRes, mesRes, pendRes] = await Promise.all([
-        fetch('/api/gastos-fixos'),
-        fetch('/api/mes'),
-        fetch('/api/pendencias'),
-      ])
-      if (!fixosRes.ok || !mesRes.ok) throw new Error('falhou')
-
-      setFixos((await fixosRes.json()) as GastoFixo[])
-      const mes = (await mesRes.json()) as {
-        categorias: Categoria[]
-        configuracoes?: { nomeSocio: string }
-      }
-      setCategorias(mes.categorias)
-      if (mes.configuracoes) setNomeSocio(mes.configuracoes.nomeSocio)
-
-      // Quem não está pendente já foi lançado neste mês.
-      if (pendRes.ok) {
-        const { pendentes } = (await pendRes.json()) as { pendentes: GastoFixo[] }
-        setPendentesIds(new Set(pendentes.map((p) => p.id)))
-      }
-    } catch {
-      setErro('Não foi possível carregar.')
-    }
-  }, [])
+  /** Incrementar força rebuscar, depois de salvar algo. */
+  const [versao, setVersao] = useState(0)
 
   useEffect(() => {
-    void carregar()
-  }, [carregar])
+    let ativo = true
+    type Mes = { categorias: Categoria[]; configuracoes?: { nomeSocio: string } }
+
+    Promise.all([
+      buscarJson<GastoFixo[]>('/api/gastos-fixos'),
+      buscarJson<Mes>('/api/mes'),
+      // A fila é complemento: se falhar, a lista de fixos aparece mesmo assim.
+      buscarJson<{ pendentes: GastoFixo[] }>('/api/pendencias').catch(() => null),
+    ])
+      .then(([fixosLidos, mes, pend]) => {
+        if (!ativo) return
+        setFixos(fixosLidos)
+        setCategorias(mes.categorias)
+        if (mes.configuracoes) setNomeSocio(mes.configuracoes.nomeSocio)
+        // Quem não está pendente já foi lançado neste mês.
+        if (pend) setPendentesIds(new Set(pend.pendentes.map((p) => p.id)))
+        setErro(null)
+      })
+      .catch(() => {
+        if (ativo) setErro('Não foi possível carregar.')
+      })
+    return () => {
+      ativo = false
+    }
+  }, [versao])
 
   function abrir(gastoFixo: GastoFixo | null) {
     setEditando(gastoFixo)
@@ -130,7 +129,7 @@ export default function Fixos() {
         categorias={categorias}
         nomeSocio={nomeSocio}
         onFechar={() => setModalAberto(false)}
-        onSalvo={() => void carregar()}
+        onSalvo={() => setVersao((v) => v + 1)}
       />
     </>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CardPendencias } from '@/components/CardPendencias'
 import { CardRateio } from '@/components/CardRateio'
 import { CartoesTotais } from '@/components/CartoesTotais'
@@ -11,6 +11,7 @@ import { ModalLancamento } from '@/components/ModalLancamento'
 import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
 import { competenciaAtual, deslocarCompetencia } from '@/lib/competencia'
+import { buscarJson } from '@/lib/rede'
 import type { DiaDoMes, Ocupacao } from '@/lib/calendario'
 import type { Rateio } from '@/lib/rateio'
 import type {
@@ -40,16 +41,26 @@ type DadosMes = {
 export default function Dashboard() {
   const [competencia, setCompetencia] = useState(competenciaAtual())
   const [direcao, setDirecao] = useState<1 | -1>(1)
-  const [dados, setDados] = useState<DadosMes | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   /**
-   * Meses já buscados, por competência.
+   * Meses já buscados, por competência, cada um com a versão em que foi lido.
    *
    * Sem cache, trocar de mês disparava a animação na hora e os dados só
-   * chegavam ~300ms depois: via-se o mês novo com os números do antigo e
-   * depois a troca — a "piscada". Com o mês em memória, a troca é síncrona.
+   * chegavam ~300ms depois — a "piscada". O cache é estado, não ref: a tela
+   * lê dele durante a renderização, então trocar para um mês já carregado é
+   * uma leitura direta, sem efeito no meio.
+   *
+   * Indexar por mês também elimina uma classe de bug: cada resposta grava só
+   * na chave do seu mês, então uma resposta atrasada nunca sobrescreve a tela
+   * de outro mês.
    */
-  const cache = useRef(new Map<string, DadosMes>())
+  const [meses, setMeses] = useState<Record<string, { dados: DadosMes; versao: number }>>({})
+  /** O mês que estava na tela antes de trocar: fica visível até o novo chegar. */
+  const [anterior, setAnterior] = useState<string | null>(null)
+  /** Incrementar invalida o cache: depois de gravar, saldo e totais mudam. */
+  const [versao, setVersao] = useState(0)
+  /** Pedidos já feitos nesta versão, para não repetir rede à toa. */
+  const pedidos = useRef(new Set<string>())
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<Lancamento | null>(null)
   // Incrementa a cada abertura. Ver a explicação na key do ModalLancamento.
@@ -57,79 +68,49 @@ export default function Dashboard() {
   const [pendentes, setPendentes] = useState<GastoFixo[]>([])
   const [falhasPendencias, setFalhasPendencias] = useState<string[]>([])
 
-  /** Busca um mês e guarda no cache. Devolve null se falhar. */
-  const buscarMes = useCallback(async (alvo: string): Promise<DadosMes | null> => {
-    try {
-      const resposta = await fetch(`/api/mes?competencia=${alvo}`)
-      if (!resposta.ok) return null
-      const corpo = (await resposta.json()) as DadosMes
-      cache.current.set(alvo, corpo)
-      return corpo
-    } catch {
-      return null
+  // Busca o mês pedido e já deixa os vizinhos prontos, para a próxima seta
+  // não esperar rede. O estado só muda nos callbacks das promessas.
+  useEffect(() => {
+    const alvos = [
+      competencia,
+      deslocarCompetencia(competencia, -1),
+      deslocarCompetencia(competencia, 1),
+    ]
+    for (const alvo of alvos) {
+      const chave = `${alvo}@${versao}`
+      if (pedidos.current.has(chave)) continue
+      pedidos.current.add(chave)
+
+      buscarJson<DadosMes>(`/api/mes?competencia=${alvo}`)
+        .then((d) => {
+          setMeses((m) => ({ ...m, [alvo]: { dados: d, versao } }))
+          if (alvo === competencia) setErro(null)
+        })
+        .catch(() => {
+          // Libera para tentar de novo; sem isso o mês ficaria travado.
+          pedidos.current.delete(chave)
+          // Nunca tela branca: o que já estava carregado continua valendo.
+          if (alvo === competencia) setErro('Não foi possível carregar. Verifique a conexão.')
+        })
     }
-  }, [])
+  }, [competencia, versao])
 
-  /** Deixa os meses vizinhos prontos, para a próxima seta não esperar rede. */
-  const prefetchVizinhos = useCallback(
-    (base: string) => {
-      for (const vizinho of [deslocarCompetencia(base, -1), deslocarCompetencia(base, 1)]) {
-        if (!cache.current.has(vizinho)) void buscarMes(vizinho)
-      }
-    },
-    [buscarMes],
-  )
-
-  const carregar = useCallback(
-    async (opcoes?: { revalidar?: boolean }) => {
-      setErro(null)
-
-      const emCache = cache.current.get(competencia)
-      if (emCache && !opcoes?.revalidar) {
-        setDados(emCache)
-        prefetchVizinhos(competencia)
-        return
-      }
-
-      const novo = await buscarMes(competencia)
-      if (novo === null) {
-        // Nunca tela branca: o que já estava carregado continua valendo.
-        setErro('Não foi possível carregar. Verifique a conexão.')
-        return
-      }
-      setDados(novo)
-      prefetchVizinhos(competencia)
-    },
-    [competencia, buscarMes, prefetchVizinhos],
-  )
-
-  /** Depois de gravar algo, o cache inteiro fica velho: totais e saldo mudam. */
-  const recarregarTudo = useCallback(async () => {
-    cache.current.clear()
-    await carregar({ revalidar: true })
-  }, [carregar])
-
-  const carregarPendencias = useCallback(async () => {
-    try {
-      const resposta = await fetch('/api/pendencias')
-      if (!resposta.ok) return
-      const corpo = (await resposta.json()) as { pendentes: GastoFixo[] }
-      setPendentes(corpo.pendentes)
-    } catch {
+  useEffect(() => {
+    buscarJson<{ pendentes: GastoFixo[] }>('/api/pendencias')
+      .then((c) => setPendentes(c.pendentes))
       // Silencioso de propósito: a fila é um extra, não pode derrubar o dashboard.
-    }
-  }, [])
+      .catch(() => {})
+  }, [versao])
 
-  useEffect(() => {
-    void carregar()
-  }, [carregar])
+  /** Depois de gravar algo: saldo, totais e fila de pendências mudam. */
+  const recarregarTudo = () => setVersao((v) => v + 1)
 
-  useEffect(() => {
-    void carregarPendencias()
-  }, [carregarPendencias])
+  // O mês pedido, se já chegou; senão o que estava na tela, para não piscar.
+  const dados = meses[competencia]?.dados ?? (anterior ? meses[anterior]?.dados : undefined) ?? null
 
   function mudarMes(nova: string, dir: 1 | -1) {
     setDirecao(dir)
+    setAnterior(dados?.competencia ?? competencia)
     setCompetencia(nova)
   }
 
@@ -157,8 +138,7 @@ export default function Dashboard() {
             competencia={competencia}
             onLancado={(falhas) => {
               setFalhasPendencias(falhas)
-              void carregar()
-              void carregarPendencias()
+              recarregarTudo()
             }}
           />
           {falhasPendencias.length > 0 && (
@@ -180,7 +160,7 @@ export default function Dashboard() {
       {erro && (
         <div className="flex items-center justify-between rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
           <span>{erro}</span>
-          <button onClick={() => void carregar({ revalidar: true })} className="underline">
+          <button onClick={recarregarTudo} className="underline">
             Tentar de novo
           </button>
         </div>
@@ -217,7 +197,7 @@ export default function Dashboard() {
                   configuracoes={dados.configuracoes}
                   repasses={dados.repasses}
                   competencia={dados.competencia}
-                  onMudou={() => void recarregarTudo()}
+                  onMudou={recarregarTudo}
                 />
                 <GraficoCategorias
                   porCategoria={dados.porCategoria}
@@ -265,7 +245,7 @@ export default function Dashboard() {
         lancamento={editando}
         nomeSocio={dados?.configuracoes.nomeSocio ?? 'Sócio'}
         onFechar={() => setModalAberto(false)}
-        onSalvo={() => void recarregarTudo()}
+        onSalvo={recarregarTudo}
       />
     </>
   )

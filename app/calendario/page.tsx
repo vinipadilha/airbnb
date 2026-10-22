@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ModalLancamento } from '@/components/ModalLancamento'
 import { Navegacao } from '@/components/Navegacao'
 import { SeletorMes } from '@/components/SeletorMes'
@@ -12,6 +12,7 @@ import {
 } from '@/lib/calendario'
 import { competenciaAtual, hojeEmSaoPaulo } from '@/lib/competencia'
 import { formatCentavos } from '@/lib/dinheiro'
+import { buscarJson } from '@/lib/rede'
 import type { Categoria, Configuracoes, Lancamento } from '@/lib/tipos'
 
 type Dados = {
@@ -35,21 +36,25 @@ export default function Calendario() {
   const [erro, setErro] = useState<string | null>(null)
   const [editando, setEditando] = useState<Lancamento | null>(null)
   const [aberturas, setAberturas] = useState(0)
-
-  const carregar = useCallback(async () => {
-    setErro(null)
-    try {
-      const resposta = await fetch(`/api/calendario?competencia=${competencia}`)
-      if (!resposta.ok) throw new Error('falhou')
-      setDados((await resposta.json()) as Dados)
-    } catch {
-      setErro('Não foi possível carregar.')
-    }
-  }, [competencia])
+  /** Incrementar força rebuscar o mês, depois de salvar algo. */
+  const [versao, setVersao] = useState(0)
 
   useEffect(() => {
-    void carregar()
-  }, [carregar])
+    // `ativo` descarta a resposta de um mês que o usuário já deixou para trás.
+    let ativo = true
+    buscarJson<Dados>(`/api/calendario?competencia=${competencia}`)
+      .then((d) => {
+        if (!ativo) return
+        setDados(d)
+        setErro(null)
+      })
+      .catch(() => {
+        if (ativo) setErro('Não foi possível carregar.')
+      })
+    return () => {
+      ativo = false
+    }
+  }, [competencia, versao])
 
   function abrir(id: string) {
     const r = dados?.reservas.find((x) => x.id === id)
@@ -247,7 +252,7 @@ export default function Calendario() {
           lancamento={editando}
           nomeSocio={dados.configuracoes.nomeSocio}
           onFechar={() => setEditando(null)}
-          onSalvo={() => void carregar()}
+          onSalvo={() => setVersao((v) => v + 1)}
         />
       )}
     </>

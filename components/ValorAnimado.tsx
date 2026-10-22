@@ -17,9 +17,11 @@ export function ValorAnimado({ centavos, className }: Props) {
   const reduzirMovimento = useReducedMotion()
 
   useEffect(() => {
+    // Com movimento reduzido não há animação: o valor é mostrado direto
+    // abaixo, sem passar por estado. Só registra de onde partir se o usuário
+    // religar o movimento.
     if (reduzirMovimento) {
       anterior.current = centavos
-      setExibido(centavos)
       return
     }
 
@@ -33,5 +35,9 @@ export function ValorAnimado({ centavos, className }: Props) {
     return () => controls.stop()
   }, [centavos, reduzirMovimento])
 
-  return <span className={`tabular-nums ${className ?? ''}`}>{formatCentavos(exibido)}</span>
+  return (
+    <span className={`tabular-nums ${className ?? ''}`}>
+      {formatCentavos(reduzirMovimento ? centavos : exibido)}
+    </span>
+  )
 }

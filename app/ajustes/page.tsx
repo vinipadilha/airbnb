@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CardConfiguracoes } from '@/components/CardConfiguracoes'
 import { CardTema } from '@/components/CardTema'
 import { ImportarCsv } from '@/components/ImportarCsv'
 import { Navegacao } from '@/components/Navegacao'
+import { buscarJson } from '@/lib/rede'
 import type { Categoria, Configuracoes } from '@/lib/tipos'
 
 export default function Ajustes() {
@@ -13,25 +14,26 @@ export default function Ajustes() {
   const [nome, setNome] = useState('')
   const [erro, setErro] = useState<string | null>(null)
 
-  const carregar = useCallback(async () => {
-    setErro(null)
-    try {
-      const resposta = await fetch('/api/mes')
-      if (!resposta.ok) throw new Error('falhou')
-      const corpo = (await resposta.json()) as {
-        categorias: Categoria[]
-        configuracoes: Configuracoes
-      }
-      setCategorias(corpo.categorias)
-      setConfiguracoes(corpo.configuracoes)
-    } catch {
-      setErro('Não foi possível carregar.')
-    }
-  }, [])
+  /** Incrementar força rebuscar, depois de salvar algo. */
+  const [versao, setVersao] = useState(0)
+  const recarregar = () => setVersao((v) => v + 1)
 
   useEffect(() => {
-    void carregar()
-  }, [carregar])
+    let ativo = true
+    buscarJson<{ categorias: Categoria[]; configuracoes: Configuracoes }>('/api/mes')
+      .then((corpo) => {
+        if (!ativo) return
+        setCategorias(corpo.categorias)
+        setConfiguracoes(corpo.configuracoes)
+        setErro(null)
+      })
+      .catch(() => {
+        if (ativo) setErro('Não foi possível carregar.')
+      })
+    return () => {
+      ativo = false
+    }
+  }, [versao])
 
   async function adicionar() {
     if (nome.trim() === '') return
@@ -41,7 +43,7 @@ export default function Ajustes() {
       body: JSON.stringify({ nome }),
     })
     setNome('')
-    void carregar()
+    recarregar()
   }
 
   async function arquivar(id: string, nomeDaCategoria: string) {
@@ -49,7 +51,7 @@ export default function Ajustes() {
       return
     }
     await fetch(`/api/categorias/${id}`, { method: 'DELETE' })
-    void carregar()
+    recarregar()
   }
 
   return (
@@ -93,7 +95,7 @@ export default function Ajustes() {
         <CardConfiguracoes configuracoes={configuracoes} onSalvo={setConfiguracoes} />
       )}
 
-      <ImportarCsv onImportado={() => void carregar()} />
+      <ImportarCsv onImportado={() => recarregar()} />
     </>
   )
 }
