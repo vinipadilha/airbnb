@@ -121,7 +121,7 @@ export default function Analise() {
             <Indicador
               rotulo="Saldo do ano"
               valor={formatCentavos(dados.totais.saldoCentavos)}
-              tom={dados.totais.saldoCentavos < 0 ? 'negativo' : 'marca'}
+              tom={dados.totais.saldoCentavos < 0 ? 'negativo' : 'neutro'}
             />
             <Indicador
               rotulo="Ocupação média"

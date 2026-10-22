@@ -5,7 +5,12 @@ type Props = {
   valor: ReactNode
   /** Linha pequena abaixo do valor: contexto, comparação, unidade. */
   detalhe?: ReactNode
-  /** Cor do valor. `marca` destaca o número principal da tela. */
+  /**
+   * Cor do valor. Dinheiro segue verde para entrada, vermelho para saída e
+   * neutro para saldo; `marca` é para números que não são dinheiro. O rosa
+   * da marca é próximo demais do vermelho no escuro: um saldo positivo em
+   * rosa se lê como negativo.
+   */
   tom?: 'neutro' | 'marca' | 'positivo' | 'negativo'
 }
 

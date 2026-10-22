@@ -104,7 +104,7 @@ export default function Calendario() {
                 <Indicador
                   rotulo="Faturamento do mês"
                   valor={<ValorAnimado centavos={dados.faturamento.estimadoCentavos} />}
-                  tom="marca"
+                  tom="positivo"
                   detalhe={
                     dados.faturamento.programadoCentavos > 0
                       ? `${formatCentavos(dados.faturamento.recebidoCentavos)} recebido`
